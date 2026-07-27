@@ -201,6 +201,19 @@
   .mg-dot-live{ fill:var(--mg-green); }
   .mg-dot-dispatch{ fill:var(--mg-amber); }
   @media (prefers-reduced-motion: reduce){ .mg-dot{ display:none; } }
+
+  /* ---------- Machine off = everything dark and still ---------- */
+  .mg-line, .mg-dot, .mg-node, .mg-card, .mg-card::before, .mg-feed-box, .mg-flow-track::after{
+    transition:opacity .5s ease, box-shadow .5s ease, border-color .5s ease, background .5s ease;
+  }
+  .mg-scale.mg-off .mg-line{ opacity:0; }
+  .mg-scale.mg-off .mg-dot{ opacity:0; }
+  .mg-scale.mg-off .mg-node{ box-shadow:none; border-color:var(--hair); }
+  .mg-scale.mg-off .mg-node-emoji, .mg-scale.mg-off .mg-node-name{ color:var(--bone-dim); }
+  .mg-scale.mg-off .mg-card{ opacity:0.4; }
+  .mg-scale.mg-off .mg-card::before{ opacity:0.15; }
+  .mg-scale.mg-off .mg-feed-box{ opacity:0.35; }
+  .mg-scale.mg-off .mg-flow-track::after{ opacity:0; }
   .mg-node{
     width:170px; margin:0 auto; position:relative; z-index:2;
     background:var(--mg-panel); border:1px solid rgba(62,217,201,0.35); border-radius:10px;
@@ -609,6 +622,7 @@ let mgInterval = null;
 function mgSetMachine(on){
   document.getElementById('mg-machine-toggle').checked = on;
   document.getElementById('mg-machine-state').textContent = on ? 'On' : 'Off';
+  document.querySelector('.mg-scale').classList.toggle('mg-off', !on);
   localStorage.setItem('mg_machine_on', on ? '1' : '0');
   if(on){
     if(!mgInterval){
