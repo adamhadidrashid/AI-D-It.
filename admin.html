@@ -190,13 +190,17 @@
 
   .mg-map-wrap{ position:relative; max-width:1000px; margin:0 auto; padding-top:20px; height:190px; }
   .mg-connectors{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-  .mg-line{ fill:none; stroke-width:3.5; opacity:0.9; stroke-linecap:round; stroke-dasharray:10 9; animation:mgLineFlow 1.6s linear infinite; }
-  @keyframes mgLineFlow{ to{ stroke-dashoffset:-19; } }
+  .mg-line{ fill:none; stroke-width:2.5; opacity:0.7; stroke-linecap:round; }
   .mg-line-scout{ stroke:var(--mg-sapphire); filter:drop-shadow(0 0 4px var(--mg-sapphire)); }
   .mg-line-forge{ stroke:var(--mg-ruby); filter:drop-shadow(0 0 4px var(--mg-ruby)); }
   .mg-line-live{ stroke:var(--mg-green); filter:drop-shadow(0 0 4px var(--mg-green)); }
   .mg-line-dispatch{ stroke:var(--mg-amber); filter:drop-shadow(0 0 4px var(--mg-amber)); }
-  @media (prefers-reduced-motion: reduce){ .mg-line{ animation:none; } }
+  .mg-dot{ filter:drop-shadow(0 0 4px rgba(255,255,255,0.9)); }
+  .mg-dot-scout{ fill:var(--mg-sapphire); }
+  .mg-dot-forge{ fill:var(--mg-ruby); }
+  .mg-dot-live{ fill:var(--mg-green); }
+  .mg-dot-dispatch{ fill:var(--mg-amber); }
+  @media (prefers-reduced-motion: reduce){ .mg-dot{ display:none; } }
   .mg-node{
     width:170px; margin:0 auto; position:relative; z-index:2;
     background:var(--mg-panel); border:1px solid rgba(62,217,201,0.35); border-radius:10px;
@@ -356,10 +360,14 @@
 
       <div class="mg-map-wrap">
         <svg class="mg-connectors" viewBox="0 0 1000 190" preserveAspectRatio="none">
-          <path d="M500,116 C500,150 113,140 113,190" class="mg-line mg-line-scout"/>
-          <path d="M500,116 C500,150 371,140 371,190" class="mg-line mg-line-forge"/>
-          <path d="M500,116 C500,150 629,140 629,190" class="mg-line mg-line-live"/>
-          <path d="M500,116 C500,150 887,140 887,190" class="mg-line mg-line-dispatch"/>
+          <path d="M500,116 C500,172 60,150 113,190" class="mg-line mg-line-scout"/>
+          <path d="M500,116 C500,150 340,162 371,190" class="mg-line mg-line-forge"/>
+          <path d="M500,116 C500,150 660,162 629,190" class="mg-line mg-line-live"/>
+          <path d="M500,116 C500,172 940,150 887,190" class="mg-line mg-line-dispatch"/>
+          <circle r="4" class="mg-dot mg-dot-scout"><animateMotion dur="2.4s" repeatCount="indefinite" path="M500,116 C500,172 60,150 113,190"/></circle>
+          <circle r="4" class="mg-dot mg-dot-forge"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0.3s" path="M500,116 C500,150 340,162 371,190"/></circle>
+          <circle r="4" class="mg-dot mg-dot-live"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0.6s" path="M500,116 C500,150 660,162 629,190"/></circle>
+          <circle r="4" class="mg-dot mg-dot-dispatch"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0.9s" path="M500,116 C500,172 940,150 887,190"/></circle>
         </svg>
         <div class="mg-node">
           <div class="mg-node-emoji">&#9737;</div>
@@ -404,10 +412,14 @@
 
       <div class="mg-feed-connectors-wrap">
         <svg class="mg-feed-connectors" viewBox="0 0 1000 64" preserveAspectRatio="none">
-          <path d="M113,0 C113,30 420,50 500,64" class="mg-line mg-line-scout"/>
-          <path d="M371,0 C371,20 460,50 500,64" class="mg-line mg-line-forge"/>
-          <path d="M629,0 C629,20 540,50 500,64" class="mg-line mg-line-live"/>
-          <path d="M887,0 C887,30 580,50 500,64" class="mg-line mg-line-dispatch"/>
+          <path d="M113,0 C113,34 380,55 500,64" class="mg-line mg-line-scout"/>
+          <path d="M371,0 C371,20 450,50 500,64" class="mg-line mg-line-forge"/>
+          <path d="M629,0 C629,20 550,50 500,64" class="mg-line mg-line-live"/>
+          <path d="M887,0 C887,34 620,55 500,64" class="mg-line mg-line-dispatch"/>
+          <circle r="4" class="mg-dot mg-dot-scout"><animateMotion dur="2.4s" repeatCount="indefinite" path="M113,0 C113,34 380,55 500,64"/></circle>
+          <circle r="4" class="mg-dot mg-dot-forge"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0.3s" path="M371,0 C371,20 450,50 500,64"/></circle>
+          <circle r="4" class="mg-dot mg-dot-live"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0.6s" path="M629,0 C629,20 550,50 500,64"/></circle>
+          <circle r="4" class="mg-dot mg-dot-dispatch"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0.9s" path="M887,0 C887,34 620,55 500,64"/></circle>
         </svg>
       </div>
 
