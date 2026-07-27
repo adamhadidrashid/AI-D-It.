@@ -778,8 +778,8 @@ try{
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.z = 6.4;
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
+  camera.position.z = 7.6;
 
   const group = new THREE.Group();
   scene.add(group);
@@ -814,7 +814,7 @@ try{
   const particleCount = 260;
   const positions = new Float32Array(particleCount * 3);
   for(let i=0;i<particleCount;i++){
-    const r = 3.6 + Math.random()*1.4;
+    const r = 3.0 + Math.random()*1.1;
     const theta = Math.random()*Math.PI*2;
     const phi = Math.acos((Math.random()*2)-1);
     positions[i*3] = r*Math.sin(phi)*Math.cos(theta);
