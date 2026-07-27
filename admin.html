@@ -156,6 +156,100 @@
   @media (prefers-reduced-motion: reduce){
     .mg-pulse-dot{ animation:none; }
   }
+
+  /* ---------- Mini GALAXY map view (its own visual identity) ---------- */
+  :root{
+    --mg-sapphire:#4E8FE0; --mg-sapphire-dim:rgba(78,143,224,0.15);
+    --mg-ruby:#DB6660; --mg-ruby-dim:rgba(219,102,96,0.15);
+    --mg-green:#5FBF8F; --mg-amber:#E0A63F; --mg-amber-dim:rgba(224,166,63,0.15);
+    --mg-turquoise:#3ED9C9; --mg-panel:#1B1D28; --mg-panel-hi:#232637;
+  }
+  #view-minigalaxy{ background:radial-gradient(ellipse 900px 500px at 50% 0%, rgba(62,217,201,0.05), transparent 60%); margin:-24px -26px; padding:24px 26px 56px; }
+
+  .mg-topbar{ display:flex; align-items:center; justify-content:space-between; padding-bottom:20px; border-bottom:1px solid var(--hair); flex-wrap:wrap; gap:16px; }
+  .mg-wordmark{ display:flex; align-items:center; gap:12px; }
+  .mg-wordmark .mg-dot{ width:10px; height:10px; border-radius:50%; background:var(--mg-amber); box-shadow:0 0 12px var(--mg-amber); }
+  .mg-wordmark h2{ font-family:'Big Shoulders Display', sans-serif; font-size:20px; text-transform:uppercase; letter-spacing:0.02em; }
+  .mg-sep{ color:var(--bone-dim); }
+  .mg-niche{ color:var(--bone-dim); font-family:'IBM Plex Sans', sans-serif; font-size:14px; }
+  .mg-topbar-right{ display:flex; gap:28px; }
+  .mg-stat{ text-align:right; }
+  .mg-stat-num{ font-family:'Big Shoulders Display', sans-serif; font-size:20px; font-weight:700; }
+  .mg-stat-lbl{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); font-family:'IBM Plex Mono', monospace; }
+
+  .mg-flow{ position:relative; height:30px; display:flex; align-items:center; gap:0; padding:8px 0; border-bottom:1px solid var(--hair); }
+  .mg-flow-track{ position:relative; flex:1; height:2px; background:var(--hair); overflow:hidden; }
+  .mg-flow-track::after{
+    content:''; position:absolute; top:0; left:-40%; width:40%; height:100%;
+    background:linear-gradient(90deg, transparent, var(--mg-sapphire), var(--mg-ruby), var(--mg-amber), transparent);
+    animation:mgFlowMove 3.2s linear infinite;
+  }
+  @keyframes mgFlowMove{ 0%{ left:-40%; } 100%{ left:100%; } }
+  .mg-flow-label{ font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--bone-dim); padding:0 14px; font-family:'IBM Plex Mono', monospace; white-space:nowrap; }
+
+  .mg-map-wrap{ position:relative; max-width:1000px; margin:0 auto; padding-top:24px; height:200px; }
+  .mg-connectors{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .mg-line{ fill:none; stroke-width:1.5; opacity:0.55; }
+  .mg-line-scout{ stroke:var(--mg-sapphire); }
+  .mg-line-forge{ stroke:var(--mg-ruby); }
+  .mg-line-live{ stroke:var(--mg-green); }
+  .mg-line-dispatch{ stroke:var(--mg-amber); }
+  .mg-node{
+    width:170px; margin:0 auto; position:relative; z-index:2;
+    background:var(--mg-panel); border:1px solid rgba(62,217,201,0.35); border-radius:10px;
+    padding:16px 18px; text-align:center; box-shadow:0 0 32px rgba(62,217,201,0.12);
+  }
+  .mg-node-emoji{ font-size:1.5rem; color:var(--mg-turquoise); margin-bottom:4px; }
+  .mg-node-name{ font-family:'Big Shoulders Display', sans-serif; font-weight:700; letter-spacing:0.04em; color:var(--mg-turquoise); }
+  .mg-node-sub{ font-size:11px; color:var(--bone-dim); margin-top:2px; }
+
+  .mg-cards{ display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; margin-top:8px; }
+  @media (max-width:900px){ .mg-cards{ grid-template-columns:repeat(2, 1fr); } }
+  .mg-card{
+    background:var(--mg-panel); border:1px solid var(--hair); border-radius:8px; padding:16px 18px;
+    position:relative; overflow:hidden; cursor:pointer; transition:transform .15s, background .15s;
+  }
+  .mg-card:hover{ transform:translateY(-3px); background:var(--mg-panel-hi); }
+  .mg-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .mg-card.mg-scout::before{ background:var(--mg-sapphire); }
+  .mg-card.mg-forge::before{ background:var(--mg-ruby); }
+  .mg-card.mg-live::before{ background:var(--mg-green); }
+  .mg-card.mg-dispatch::before{ background:var(--mg-amber); }
+  .mg-agent-name{ font-family:'Big Shoulders Display', sans-serif; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; margin-bottom:4px; letter-spacing:0.03em; }
+  .mg-badge{ width:7px; height:7px; border-radius:50%; }
+  .mg-scout .mg-badge{ background:var(--mg-sapphire); }
+  .mg-forge .mg-badge{ background:var(--mg-ruby); }
+  .mg-live .mg-badge{ background:var(--mg-green); }
+  .mg-dispatch .mg-badge{ background:var(--mg-amber); }
+  .mg-role{ font-size:12px; color:var(--bone-dim); margin-bottom:14px; }
+  .mg-count{ font-family:'Big Shoulders Display', sans-serif; font-size:28px; font-weight:700; line-height:1; }
+  .mg-count-lbl{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); margin-top:4px; font-family:'IBM Plex Mono', monospace; }
+
+  .mg-feeds{ display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; margin-top:14px; }
+  @media (max-width:900px){ .mg-feeds{ grid-template-columns:repeat(2, 1fr); } }
+  .mg-feed-box{
+    background:var(--mg-panel); border:1px solid var(--hair); border-radius:8px; padding:12px 14px;
+    font-size:12px; color:var(--bone-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  .mg-machine-row{ display:flex; justify-content:center; margin-top:28px; }
+  .mg-machine{ display:flex; align-items:center; gap:16px; background:var(--mg-panel); border:1px solid var(--hair); border-radius:8px; padding:14px 22px; }
+  .mg-machine-lbl{ font-family:'Big Shoulders Display', sans-serif; font-size:13px; text-transform:uppercase; }
+  .mg-machine-state{ font-size:11px; color:var(--bone-dim); font-family:'IBM Plex Mono', monospace; }
+  .mg-toggle{ position:relative; width:40px; height:22px; display:inline-block; }
+  .mg-toggle input{ opacity:0; width:0; height:0; }
+  .mg-toggle-slider{ position:absolute; inset:0; background:var(--steel); border-radius:11px; cursor:pointer; transition:background .2s; }
+  .mg-toggle-slider::before{ content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:var(--bone); border-radius:50%; transition:transform .2s; }
+  .mg-toggle input:checked + .mg-toggle-slider{ background:var(--mg-turquoise); }
+  .mg-toggle input:checked + .mg-toggle-slider::before{ transform:translateX(18px); }
+
+  .mg-list-section{ margin-top:36px; }
+  .mg-list{ display:flex; flex-direction:column; gap:1px; background:var(--hair); border:1px solid var(--hair); }
+  .mg-list-row{ background:var(--void); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; cursor:pointer; }
+  .mg-list-row:hover{ background:var(--void-2); }
+  .mg-list-row .mg-list-name{ font-family:'Big Shoulders Display', sans-serif; font-size:14px; }
+  .mg-list-row .mg-list-meta{ font-size:12px; color:var(--bone-dim); }
+  .mg-list-empty{ padding:24px; text-align:center; color:var(--steel); font-size:13px; background:var(--void); }
   .modal{ background:var(--void-2); border:1px solid var(--hair); width:100%; max-width:420px; padding:26px; display:flex; flex-direction:column; gap:14px; }
   .modal h2{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:22px; }
   .modal-actions{ display:flex; gap:10px; justify-content:space-between; margin-top:6px; }
@@ -231,15 +325,93 @@
     </div>
 
     <div class="view hidden" id="view-minigalaxy">
-      <div class="view-head">
-        <h2><span class="mg-pulse-dot" style="margin-right:10px;"></span>Mini GALAXY</h2>
-        <button class="btn" id="mg-add-btn">+ Add Business</button>
+      <div class="mg-topbar">
+        <div class="mg-wordmark">
+          <span class="mg-dot"></span>
+          <h2>MINI GALAXY</h2>
+          <span class="mg-sep">/</span>
+          <span class="mg-niche">beauty salons</span>
+        </div>
+        <div class="mg-topbar-right">
+          <div class="mg-stat"><div class="mg-stat-num" id="mg-stat-leads">0</div><div class="mg-stat-lbl">Leads</div></div>
+          <div class="mg-stat"><div class="mg-stat-num" id="mg-stat-build">0</div><div class="mg-stat-lbl">To build</div></div>
+          <div class="mg-stat"><div class="mg-stat-num" id="mg-stat-send">0</div><div class="mg-stat-lbl">To send</div></div>
+          <div class="mg-stat"><div class="mg-stat-num" id="mg-stat-sent">0</div><div class="mg-stat-lbl">Sent</div></div>
+        </div>
       </div>
-      <div class="board" id="mg-board">
-        <div class="column" data-stage="queued"><div class="column-head"><span>Queued</span><span class="count">0</span></div><div class="cards" data-stage="queued"></div></div>
-        <div class="column" data-stage="ready"><div class="column-head"><span>Ready (site live)</span><span class="count">0</span></div><div class="cards" data-stage="ready"></div></div>
-        <div class="column" data-stage="sent"><div class="column-head"><span>Pitched</span><span class="count">0</span></div><div class="cards" data-stage="sent"></div></div>
-        <div class="column" data-stage="rejected"><div class="column-head"><span>Rejected</span><span class="count">0</span></div><div class="cards" data-stage="rejected"></div></div>
+
+      <div class="mg-flow">
+        <span class="mg-flow-label">Scout</span>
+        <div class="mg-flow-track"></div>
+        <span class="mg-flow-label">Forge</span>
+        <div class="mg-flow-track"></div>
+        <span class="mg-flow-label">Dispatch</span>
+      </div>
+
+      <div class="mg-map-wrap">
+        <svg class="mg-connectors" viewBox="0 0 1000 210" preserveAspectRatio="none">
+          <path d="M500,0 C500,60 220,40 220,100" class="mg-line mg-line-scout"/>
+          <path d="M500,0 C500,60 420,40 420,100" class="mg-line mg-line-forge"/>
+          <path d="M500,0 C500,60 620,40 620,100" class="mg-line mg-line-live"/>
+          <path d="M500,0 C500,60 800,40 800,100" class="mg-line mg-line-dispatch"/>
+        </svg>
+        <div class="mg-node">
+          <div class="mg-node-emoji">&#9737;</div>
+          <div class="mg-node-name">GALAXY</div>
+          <div class="mg-node-sub">orchestrator</div>
+        </div>
+      </div>
+
+      <div class="mg-cards">
+        <div class="mg-card mg-scout" data-filter="queued" data-role="scout">
+          <div class="mg-agent-name"><span class="mg-badge"></span>SCOUT</div>
+          <div class="mg-role">Sourcing leads, town by town</div>
+          <div class="mg-count" id="mg-count-scout">0</div>
+          <div class="mg-count-lbl">Leads found</div>
+        </div>
+        <div class="mg-card mg-forge" data-filter="queued" data-role="forge">
+          <div class="mg-agent-name"><span class="mg-badge"></span>FORGE</div>
+          <div class="mg-role">Sites waiting to be built</div>
+          <div class="mg-count" id="mg-count-forge">0</div>
+          <div class="mg-count-lbl">In your queue</div>
+        </div>
+        <div class="mg-card mg-live" data-filter="ready" data-role="live">
+          <div class="mg-agent-name"><span class="mg-badge"></span>LIVE</div>
+          <div class="mg-role">Sites hosted &amp; ready</div>
+          <div class="mg-count" id="mg-count-live">0</div>
+          <div class="mg-count-lbl">Hosted sites</div>
+        </div>
+        <div class="mg-card mg-dispatch" data-filter="sent" data-role="dispatch">
+          <div class="mg-agent-name"><span class="mg-badge"></span>DISPATCH</div>
+          <div class="mg-role">Live sites, ready to pitch</div>
+          <div class="mg-count" id="mg-count-dispatch">0</div>
+          <div class="mg-count-lbl">Sent</div>
+        </div>
+      </div>
+
+      <div class="mg-feeds">
+        <div class="mg-feed-box" id="mg-feed-scout">—</div>
+        <div class="mg-feed-box" id="mg-feed-forge">—</div>
+        <div class="mg-feed-box" id="mg-feed-live">—</div>
+        <div class="mg-feed-box" id="mg-feed-dispatch">—</div>
+      </div>
+
+      <div class="mg-machine-row">
+        <div class="mg-machine">
+          <div><div class="mg-machine-lbl">Machine</div><div class="mg-machine-state" id="mg-machine-state">Off</div></div>
+          <label class="mg-toggle">
+            <input type="checkbox" id="mg-machine-toggle">
+            <span class="mg-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="mg-list-section">
+        <div class="view-head">
+          <h2 id="mg-list-title">All businesses</h2>
+          <button class="btn" id="mg-add-btn">+ Add Business</button>
+        </div>
+        <div class="mg-list" id="mg-list"></div>
       </div>
     </div>
   </div>
@@ -278,6 +450,14 @@
     <div class="field"><label>Phone</label><input type="text" id="mg-f-phone"></div>
     <div class="field"><label>Email</label><input type="text" id="mg-f-email"></div>
     <div class="field"><label>Live URL (once site's hosted)</label><input type="text" id="mg-f-liveurl"></div>
+    <div class="field"><label>Stage</label>
+      <select id="mg-f-stage">
+        <option value="queued">Queued</option>
+        <option value="ready">Ready (site live)</option>
+        <option value="sent">Sent</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="btn danger" id="mg-delete-btn" style="display:none;">Delete</button>
       <div style="display:flex; gap:10px; margin-left:auto;">
@@ -397,6 +577,22 @@ function displayName(user){
   return (user.email || '').split('@')[0];
 }
 
+let mgInterval = null;
+function mgSetMachine(on){
+  document.getElementById('mg-machine-toggle').checked = on;
+  document.getElementById('mg-machine-state').textContent = on ? 'On' : 'Off';
+  localStorage.setItem('mg_machine_on', on ? '1' : '0');
+  if(on){
+    if(!mgInterval){
+      mgInterval = setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
+    }
+  } else if(mgInterval){
+    clearInterval(mgInterval);
+    mgInterval = null;
+  }
+}
+document.getElementById('mg-machine-toggle').addEventListener('change', e => mgSetMachine(e.target.checked));
+
 async function enterDashboard(){
   document.getElementById('user-name').textContent = displayName(currentUser);
   show('app-shell');
@@ -407,7 +603,7 @@ async function enterDashboard(){
   await mgLoadLeads();
   mgRender();
   updateMgPill();
-  setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
+  mgSetMachine(localStorage.getItem('mg_machine_on') === '1');
 }
 
 // ---- Tab switching ----
@@ -583,57 +779,64 @@ function updateMgPill(){
   }
 }
 
+let mgFilter = 'all';
+
 function mgRender(){
-  document.querySelectorAll('#mg-board .cards').forEach(col => col.innerHTML = '');
-  const stages = ['queued','ready','sent','rejected'];
-  stages.forEach(stage => {
-    const items = mgLeads.filter(l => l.status === stage);
-    const col = document.querySelector('#mg-board .cards[data-stage="'+stage+'"]');
-    document.querySelector('#mg-board .column[data-stage="'+stage+'"] .count').textContent = items.length;
-    if(items.length === 0){
-      const hint = document.createElement('div');
-      hint.className = 'empty-hint';
-      hint.textContent = 'No businesses here';
-      col.appendChild(hint);
-      return;
-    }
-    items.forEach(lead => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.draggable = true;
-      card.dataset.id = lead.id;
-      card.innerHTML =
-        '<div class="biz"><span class="mg-pulse-dot" style="margin-right:6px; width:6px; height:6px;"></span>' + escapeHtml(lead.name) + '</div>' +
-        (lead.town ? '<div class="meta">' + escapeHtml(lead.town) + '</div>' : '') +
-        (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
-        (lead.email ? '<div class="meta">' + escapeHtml(lead.email) + '</div>' : '') +
-        (lead.live_url ? '<span class="src">LIVE SITE</span>' : '');
-      card.addEventListener('click', () => mgOpenModal(lead.id));
-      card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', lead.id));
-      col.appendChild(card);
-    });
+  const queued = mgLeads.filter(l => l.status === 'queued');
+  const ready = mgLeads.filter(l => l.status === 'ready');
+  const sent = mgLeads.filter(l => l.status === 'sent');
+  const rejected = mgLeads.filter(l => l.status === 'rejected');
+
+  document.getElementById('mg-stat-leads').textContent = mgLeads.length;
+  document.getElementById('mg-stat-build').textContent = queued.length;
+  document.getElementById('mg-stat-send').textContent = ready.length;
+  document.getElementById('mg-stat-sent').textContent = sent.length;
+
+  document.getElementById('mg-count-scout').textContent = mgLeads.length;
+  document.getElementById('mg-count-forge').textContent = queued.length;
+  document.getElementById('mg-count-live').textContent = ready.length;
+  document.getElementById('mg-count-dispatch').textContent = sent.length;
+
+  const latest = arr => arr.length ? arr[arr.length-1].name : '—';
+  document.getElementById('mg-feed-scout').textContent = mgLeads.length ? `${latest(mgLeads)} found` : '—';
+  document.getElementById('mg-feed-forge').textContent = queued.length ? `Waiting: ${latest(queued)}` : 'Queue empty';
+  document.getElementById('mg-feed-live').textContent = ready.length ? `${latest(ready)} is live` : 'Nothing live yet';
+  document.getElementById('mg-feed-dispatch').textContent = sent.length ? `${latest(sent)} — sent` : 'Nothing sent yet';
+
+  mgRenderList();
+}
+
+function mgRenderList(){
+  const list = document.getElementById('mg-list');
+  const title = document.getElementById('mg-list-title');
+  const titles = { all:'All businesses', queued:'Forge — queue', ready:'Live — hosted sites', sent:'Dispatch — sent', rejected:'Rejected' };
+  title.textContent = titles[mgFilter] || 'All businesses';
+
+  const items = mgFilter === 'all' ? mgLeads : mgLeads.filter(l => l.status === mgFilter);
+  list.innerHTML = '';
+  if(items.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'mg-list-empty';
+    empty.textContent = 'Nothing here yet';
+    list.appendChild(empty);
+    return;
+  }
+  items.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'mg-list-row';
+    row.innerHTML =
+      '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
+      '<div class="mg-list-meta">' + escapeHtml(lead.town || '') + (lead.phone ? ' · ' + escapeHtml(lead.phone) : '') + (lead.email ? ' · ' + escapeHtml(lead.email) : '') + '</div></div>' +
+      '<div class="mg-list-meta">' + escapeHtml(lead.status) + (lead.live_url ? ' · live' : '') + '</div>';
+    row.addEventListener('click', () => mgOpenModal(lead.id));
+    list.appendChild(row);
   });
 }
 
-document.querySelectorAll('#mg-board .cards').forEach(col => {
-  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
-  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
-  col.addEventListener('drop', async e => {
-    e.preventDefault();
-    col.classList.remove('drag-over');
-    const id = e.dataTransfer.getData('text/plain');
-    const lead = mgLeads.find(l => l.id === id);
-    if(lead){
-      lead.status = col.dataset.stage;
-      try{
-        await fetch(MG_WORKER_URL + '/leads/' + id, {
-          method:'PATCH', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ status: lead.status })
-        });
-      }catch(err){ console.error('Mini GALAXY update failed:', err); }
-      mgRender();
-      updateMgPill();
-    }
+document.querySelectorAll('.mg-card').forEach(card => {
+  card.addEventListener('click', () => {
+    mgFilter = card.dataset.filter;
+    mgRenderList();
   });
 });
 
@@ -648,6 +851,7 @@ function mgOpenModal(id){
     document.getElementById('mg-f-phone').value = lead.phone || '';
     document.getElementById('mg-f-email').value = lead.email || '';
     document.getElementById('mg-f-liveurl').value = lead.live_url || '';
+    document.getElementById('mg-f-stage').value = lead.status || 'queued';
     deleteBtn.style.display = 'inline-block';
   } else {
     mgEditingId = null;
@@ -657,6 +861,7 @@ function mgOpenModal(id){
     document.getElementById('mg-f-phone').value = '';
     document.getElementById('mg-f-email').value = '';
     document.getElementById('mg-f-liveurl').value = '';
+    document.getElementById('mg-f-stage').value = 'queued';
     deleteBtn.style.display = 'none';
   }
   document.getElementById('mg-modal-backdrop').classList.add('open');
@@ -680,7 +885,8 @@ document.getElementById('mg-save-btn').addEventListener('click', async () => {
     town: document.getElementById('mg-f-town').value.trim(),
     phone: document.getElementById('mg-f-phone').value.trim(),
     email: document.getElementById('mg-f-email').value.trim(),
-    live_url: document.getElementById('mg-f-liveurl').value.trim()
+    live_url: document.getElementById('mg-f-liveurl').value.trim(),
+    status: document.getElementById('mg-f-stage').value
   };
   try{
     if(mgEditingId){
