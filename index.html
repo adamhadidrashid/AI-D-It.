@@ -332,6 +332,10 @@
     70%{ text-shadow:2px 0 var(--ember), -2px 0 var(--blood); transform:translateX(1px); }
     100%{ text-shadow:none; transform:translateX(0); }
   }
+  .reveal-sentinel{
+    position:absolute; top:0; left:0; width:1px; height:1px;
+    opacity:0; pointer-events:none;
+  }
 
   /* ---------- PIXEL DISSOLVE PAGE-LOAD REVEAL ---------- */
   #pixel-reveal{
@@ -408,6 +412,7 @@
 </section>
 
 <section class="manifesto-section reveal">
+  <div class="reveal-sentinel"></div>
   <div class="manifesto">
     <div class="eyebrow">The position</div>
     <p style="margin-top:20px;">Most agencies show up with a <strong>menu</strong>. We show up with a <strong>diagnosis</strong>. Every business is already leaking hours somewhere — a phone that rings out after 6pm, a lead that goes cold overnight, a spreadsheet three people are quietly maintaining by hand. <em>We find that first. Then we build.</em></p>
@@ -415,6 +420,7 @@
 </section>
 
 <section id="services" class="reveal">
+  <div class="reveal-sentinel"></div>
   <div class="section-head">
     <div class="eyebrow">What we build</div>
     <h2>Systems, not software</h2>
@@ -519,6 +525,7 @@
 </section>
 
 <section id="process" class="reveal">
+  <div class="reveal-sentinel"></div>
   <div class="section-head">
     <div class="eyebrow">How it runs</div>
     <h2>Three steps. No lock-in.</h2>
@@ -543,6 +550,7 @@
 </section>
 
 <section id="proof" class="reveal">
+  <div class="reveal-sentinel"></div>
   <div class="section-head">
     <div class="eyebrow">Proof</div>
     <h2>Built, not theoretical</h2>
@@ -599,6 +607,7 @@
 </section>
 
 <section id="efficiency" class="reveal">
+  <div class="reveal-sentinel"></div>
   <div class="section-head">
     <div class="eyebrow">The maths</div>
     <h2>Less spent. More done.</h2>
@@ -609,6 +618,7 @@
 </section>
 
 <section class="cta reveal" id="contact">
+  <div class="reveal-sentinel"></div>
   <div class="eyebrow">Start here</div>
   <h2>Book the audit</h2>
   <p>Tell us where it hurts. We'll tell you honestly whether AI is the answer — and if it isn't, we'll say so.</p>
@@ -688,6 +698,20 @@ try{
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Neon color-cycle palette: pink -> orange -> dark blue -> yellow -> loop
+  const palette = [0xff2e9a, 0xff7a1a, 0x1a3aff, 0xf5ff2e].map(c => new THREE.Color(c));
+  const _cycleColor = new THREE.Color();
+  function colorAt(tSeconds, phaseOffset){
+    const t = tSeconds + (phaseOffset || 0);
+    const n = palette.length;
+    const idx = Math.floor(t) % n;
+    const next = (idx + 1) % n;
+    const frac = t - Math.floor(t);
+    _cycleColor.copy(palette[idx]).lerp(palette[next], frac);
+    return _cycleColor;
+  }
+  const cycleSpeed = 0.34; // lower = slower phase through the palette
+
   function animate(){
     requestAnimationFrame(animate);
     if(!reduceMotion){
@@ -698,6 +722,14 @@ try{
       ringB.rotation.z -= 0.0014;
       ringC.rotation.z += 0.0009;
       particles.rotation.y += 0.0008;
+
+      const t = performance.now() / 1000 * cycleSpeed;
+      core.material.color.copy(colorAt(t));
+      glow.material.color.copy(colorAt(t, 0.5));
+      particles.material.color.copy(colorAt(t, 0.2));
+      ringA.material.color.copy(colorAt(t, 0.3));
+      ringB.material.color.copy(colorAt(t, 0.6));
+      ringC.material.color.copy(colorAt(t, 0.9));
     }
     renderer.render(scene, camera);
   }
@@ -733,16 +765,20 @@ document.querySelectorAll('#services-accordion .acc-item').forEach(item => {
 }catch(err){ console.error('Accordion init failed:', err); }
 
 // Scroll-triggered section reveals
+// (observing a plain sentinel per section, not the clipped/filtered section
+// itself, since clip-path + filter can make some browsers miscalculate
+// intersection on the actual styled element)
 const revealObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if(entry.isIntersecting){
-      entry.target.classList.add('in-view');
+      const section = entry.target.closest('.reveal');
+      if(section) section.classList.add('in-view');
       revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold:0.12, rootMargin:'0px 0px -60px 0px' });
+}, { threshold:0, rootMargin:'0px 0px -15% 0px' });
 
-document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+document.querySelectorAll('.reveal-sentinel').forEach(el => revealObserver.observe(el));
 
 // Safety net: force-reveal anything still hidden after a few seconds,
 // in case the observer never fires for some reason.
