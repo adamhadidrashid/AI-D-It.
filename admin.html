@@ -177,26 +177,12 @@
     .mg-agent-core, .mg-agent-orbit{ animation:none; }
   }
 
-  /* ---------- Sphere agent beneath the columns, centred, machine-on only ---------- */
-  .mg-orb-wrap{ display:flex; flex-direction:column; align-items:center; width:fit-content; margin:0 auto; }
-  .mg-orb-line{
-    width:3px; height:36px;
-    background:linear-gradient(180deg, var(--mg-turquoise), rgba(62,217,201,0.15));
-    box-shadow:0 0 6px var(--mg-turquoise);
+  /* ---------- Living sphere agent, fixed bottom-left of the whole app ---------- */
+  #mg-living-sphere{
+    position:fixed; bottom:22px; left:212px; z-index:150;
+    width:150px; height:150px; pointer-events:none;
   }
-  .mg-orb{
-    width:22px; height:22px; border-radius:50%; margin-top:-1px;
-    background:radial-gradient(circle at 35% 35%, #ffffff, var(--mg-turquoise) 55%, var(--mg-sapphire) 100%);
-    box-shadow:0 0 14px var(--mg-turquoise), 0 0 30px rgba(62,217,201,0.4);
-    animation:mgOrbPulse 1.8s ease-in-out infinite;
-  }
-  @keyframes mgOrbPulse{
-    0%,100%{ transform:scale(1); opacity:1; }
-    50%{ transform:scale(0.82); opacity:0.7; }
-  }
-  @media (prefers-reduced-motion: reduce){
-    .mg-orb{ animation:none; }
-  }
+  @media (max-width:720px){ #mg-living-sphere{ left:22px; } }
 
   /* ---------- Mini GALAXY map view (its own visual identity) ---------- */
   :root{
@@ -400,10 +386,6 @@
         <div class="column" data-stage="audit"><div class="column-head"><span>Audit Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Lost</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
-      </div>
-      <div class="mg-orb-wrap" id="mg-orb-wrap" style="display:none;">
-        <div class="mg-orb-line"></div>
-        <div class="mg-orb"></div>
       </div>
     </div>
 
@@ -685,7 +667,6 @@ function applyMachineUI(on){
   document.getElementById('mg-machine-state').textContent = on ? 'On' : 'Off';
   document.querySelector('.mg-scale').classList.toggle('mg-off', !on);
   document.getElementById('mg-agent-wrap').style.display = on ? 'flex' : 'none';
-  document.getElementById('mg-orb-wrap').style.display = on ? 'flex' : 'none';
   if(on){
     if(!mgInterval){
       mgInterval = setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
@@ -1044,6 +1025,66 @@ document.getElementById('mg-delete-btn').addEventListener('click', async () => {
 });
 
 boot();
+</script>
+
+<canvas id="mg-living-sphere"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+try{
+(function(){
+  const canvas = document.getElementById('mg-living-sphere');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
+  renderer.setSize(150, 150);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.z = 5.4;
+
+  const group = new THREE.Group();
+  scene.add(group);
+
+  const coreGeo = new THREE.IcosahedronGeometry(1.5, 2);
+  const coreWire = new THREE.WireframeGeometry(coreGeo);
+  const coreMat = new THREE.LineBasicMaterial({ color:0xff2e9a, transparent:true, opacity:0.85 });
+  const core = new THREE.LineSegments(coreWire, coreMat);
+  group.add(core);
+
+  const glowGeo = new THREE.IcosahedronGeometry(1.42, 1);
+  const glowMat = new THREE.MeshBasicMaterial({ color:0x9d5cff, transparent:true, opacity:0.1 });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  group.add(glow);
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const palette = [0xff2e9a, 0xff7a1a, 0x1a3aff, 0xf5ff2e].map(c => new THREE.Color(c));
+  const _cycleColor = new THREE.Color();
+  function colorAt(tSeconds, phaseOffset){
+    const t = tSeconds + (phaseOffset || 0);
+    const n = palette.length;
+    const idx = Math.floor(t) % n;
+    const next = (idx + 1) % n;
+    const frac = t - Math.floor(t);
+    _cycleColor.copy(palette[idx]).lerp(palette[next], frac);
+    return _cycleColor;
+  }
+  const cycleSpeed = 0.3;
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!reduceMotion){
+      core.rotation.y += 0.004;
+      core.rotation.x += 0.0015;
+      glow.rotation.y -= 0.0025;
+      const t = performance.now() / 1000 * cycleSpeed;
+      core.material.color.copy(colorAt(t));
+      glow.material.color.copy(colorAt(t, 0.5));
+    }
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+}catch(err){ console.error('Living sphere init failed:', err); }
 </script>
 
 </body>
