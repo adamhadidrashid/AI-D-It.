@@ -1118,7 +1118,7 @@ function showServicesList(){
   buttonRow(SERVICES.map(s => ({
     label: s.title,
     action: () => showServiceDetail(s.key)
-  })));
+  })).concat([{ label:'Back to start', secondary:true, action: showMainMenu }]));
 }
 
 function showServiceDetail(key){
@@ -1127,6 +1127,7 @@ function showServiceDetail(key){
   botMessage(service.detail);
   buttonRow([
     { label:'Back to list', secondary:true, action: showServicesList },
+    { label:'Back to start', secondary:true, action: showMainMenu },
     { label:'Request a call', action: showConfirmForm.bind(null, 'call') },
     { label:'Book an audit', action: showConfirmForm.bind(null, 'audit') }
   ]);
