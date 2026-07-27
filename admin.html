@@ -33,7 +33,40 @@
     font-family:'IBM Plex Sans', sans-serif; font-size:14px; padding:10px 12px;
   }
   .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--ember); }
-  .center-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .center-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; position:relative; z-index:1; }
+
+  .ambient-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+  }
+  .ambient-bg::before, .ambient-bg::after{
+    content:''; position:absolute; border-radius:50%; filter:blur(60px);
+    animation:ambientDrift 14s ease-in-out infinite alternate;
+  }
+  .ambient-bg::before{
+    width:520px; height:520px; top:-120px; left:-100px;
+    background:radial-gradient(circle, rgba(46,230,255,0.16), transparent 70%);
+  }
+  .ambient-bg::after{
+    width:600px; height:600px; bottom:-160px; right:-140px;
+    background:radial-gradient(circle, rgba(157,92,255,0.14), transparent 70%);
+    animation-delay:-7s;
+  }
+  @keyframes ambientDrift{
+    0%{ transform:translate(0,0) scale(1); }
+    100%{ transform:translate(40px,30px) scale(1.12); }
+  }
+
+  .back-link{
+    position:fixed; top:22px; left:22px; z-index:50;
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--ember); text-decoration:none; text-shadow:0 0 10px rgba(46,230,255,0.5);
+    display:flex; align-items:center; gap:6px;
+  }
+  .back-link:hover{ text-shadow:0 0 16px rgba(46,230,255,0.8); }
+
+  @media (prefers-reduced-motion: reduce){
+    .ambient-bg::before, .ambient-bg::after{ animation:none; }
+  }
   .panel{ width:100%; max-width:380px; background:var(--void-2); border:1px solid var(--hair); padding:32px; display:flex; flex-direction:column; gap:16px; }
   .panel h1{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:26px; }
   .panel h1 span{ color:var(--ember); }
@@ -112,6 +145,9 @@
 </style>
 </head>
 <body>
+
+<div class="ambient-bg"></div>
+<a href="index.html" class="back-link">&larr; Back</a>
 
 <!-- STEP 1: Supabase connection setup (one-time, stored locally) -->
 <div id="setup-screen" class="center-screen">
@@ -198,7 +234,7 @@
 <script>
 const LS_URL = 'aidit_sb_url';
 const LS_KEY = 'aidit_sb_key';
-let supabase = null;
+let sbClient = null;
 let currentUser = null;
 let leads = [];
 let editingId = null;
@@ -210,37 +246,49 @@ function initSupabaseFromStorage(){
   const url = localStorage.getItem(LS_URL);
   const key = localStorage.getItem(LS_KEY);
   if(url && key){
-    supabase = window.supabase.createClient(url, key);
+    if(typeof window.supabase === 'undefined'){
+      throw new Error('Supabase library failed to load — check your internet connection or try disabling any ad-blocker/extension, then refresh.');
+    }
+    sbClient = window.supabase.createClient(url, key);
     return true;
   }
   return false;
 }
 
 async function boot(){
-  if(initSupabaseFromStorage()){
-    hide('setup-screen');
-    const { data } = await supabase.auth.getSession();
-    if(data.session){
-      currentUser = data.session.user;
-      enterDashboard();
+  try{
+    if(initSupabaseFromStorage()){
+      hide('setup-screen');
+      const { data, error } = await sbClient.auth.getSession();
+      if(error) throw error;
+      if(data.session){
+        currentUser = data.session.user;
+        enterDashboard();
+      } else {
+        show('login-screen');
+      }
     } else {
-      show('login-screen');
+      show('setup-screen');
     }
-  } else {
+  }catch(err){
+    console.error('Connection failed:', err);
+    hide('login-screen');
+    hide('app-shell');
     show('setup-screen');
+    document.getElementById('setup-error').textContent = 'Connection failed: ' + (err.message || err);
   }
 }
 
 document.getElementById('setup-save').addEventListener('click', () => {
   const url = document.getElementById('setup-url').value.trim();
   const key = document.getElementById('setup-key').value.trim();
+  document.getElementById('setup-error').textContent = '';
   if(!url || !key){
     document.getElementById('setup-error').textContent = 'Both fields are required.';
     return;
   }
   localStorage.setItem(LS_URL, url);
   localStorage.setItem(LS_KEY, key);
-  hide('setup-screen');
   boot();
 });
 
@@ -256,18 +304,23 @@ document.getElementById('login-submit').addEventListener('click', async () => {
   const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-error');
   errEl.textContent = '';
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if(error){
-    errEl.textContent = error.message;
-    return;
+  try{
+    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+    if(error){
+      errEl.textContent = error.message;
+      return;
+    }
+    currentUser = data.user;
+    hide('login-screen');
+    enterDashboard();
+  }catch(err){
+    console.error('Login failed:', err);
+    errEl.textContent = 'Something went wrong: ' + (err.message || err);
   }
-  currentUser = data.user;
-  hide('login-screen');
-  enterDashboard();
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await sbClient.auth.signOut();
   currentUser = null;
   hide('app-shell');
   show('login-screen');
@@ -296,7 +349,7 @@ async function enterDashboard(){
 
 // ---- Leads (Supabase-backed) ----
 async function loadLeads(){
-  const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending:true });
+  const { data, error } = await sbClient.from('leads').select('*').order('created_at', { ascending:true });
   if(error){ console.error(error); leads = []; return; }
   leads = data.map(row => ({
     id: row.id, biz: row.biz, contact: row.contact, phone: row.phone,
@@ -351,7 +404,7 @@ document.querySelectorAll('.cards').forEach(col => {
     const lead = leads.find(l => l.id === id);
     if(lead){
       lead.stage = col.dataset.stage;
-      await supabase.from('leads').update({ stage: lead.stage }).eq('id', id);
+      await sbClient.from('leads').update({ stage: lead.stage }).eq('id', id);
       render();
     }
   });
@@ -403,10 +456,10 @@ document.getElementById('save-lead-btn').addEventListener('click', async () => {
     notes: document.getElementById('f-notes').value.trim()
   };
   if(editingId){
-    await supabase.from('leads').update(data).eq('id', editingId);
+    await sbClient.from('leads').update(data).eq('id', editingId);
     Object.assign(leads.find(l => l.id === editingId), data);
   } else {
-    const { data: inserted, error } = await supabase.from('leads').insert({ ...data, stage:'new' }).select().single();
+    const { data: inserted, error } = await sbClient.from('leads').insert({ ...data, stage:'new' }).select().single();
     if(!error){
       leads.push({ id: inserted.id, stage:'new', ...data });
     }
@@ -417,7 +470,7 @@ document.getElementById('save-lead-btn').addEventListener('click', async () => {
 
 document.getElementById('delete-lead-btn').addEventListener('click', async () => {
   if(editingId){
-    await supabase.from('leads').delete().eq('id', editingId);
+    await sbClient.from('leads').delete().eq('id', editingId);
     leads = leads.filter(l => l.id !== editingId);
     render();
     closeModal();
