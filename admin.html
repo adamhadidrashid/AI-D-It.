@@ -137,6 +137,25 @@
 
   .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; }
   .modal-backdrop.open{ display:flex; }
+
+  .mg-pulse-dot{
+    width:9px; height:9px; border-radius:50%; background:var(--ember);
+    display:inline-block; box-shadow:0 0 8px var(--ember);
+    animation:mgPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes mgPulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.5; transform:scale(1.4); }
+  }
+  .mg-pill{
+    display:flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--bone-dim); border:1px solid var(--hair); padding:8px 14px; cursor:pointer;
+  }
+  .mg-pill:hover{ color:var(--ember); border-color:var(--ember); }
+  @media (prefers-reduced-motion: reduce){
+    .mg-pulse-dot{ animation:none; }
+  }
   .modal{ background:var(--void-2); border:1px solid var(--hair); width:100%; max-width:420px; padding:26px; display:flex; flex-direction:column; gap:14px; }
   .modal h2{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:22px; }
   .modal-actions{ display:flex; gap:10px; justify-content:space-between; margin-top:6px; }
@@ -178,6 +197,7 @@
   <div class="sidebar">
     <div class="logotype">AI<span>'D</span> IT</div>
     <a class="tab-link active" data-tab="leads">Leads</a>
+    <a class="tab-link" data-tab="minigalaxy">Mini GALAXY</a>
     <a class="tab-link disabled" title="Add more tabs later">+ More soon</a>
   </div>
   <div class="main-col">
@@ -193,7 +213,13 @@
     <div class="view" id="view-leads">
       <div class="view-head">
         <h2>Leads</h2>
-        <button class="btn" id="add-lead-btn">+ Add Lead</button>
+        <div style="display:flex; align-items:center; gap:16px;">
+          <div class="mg-pill" id="mg-pill" style="display:none;">
+            <span class="mg-pulse-dot"></span>
+            <span id="mg-pill-text">Mini GALAXY active</span>
+          </div>
+          <button class="btn" id="add-lead-btn">+ Add Lead</button>
+        </div>
       </div>
       <div class="board" id="board">
         <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
@@ -201,6 +227,19 @@
         <div class="column" data-stage="audit"><div class="column-head"><span>Audit Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Lost</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
+      </div>
+    </div>
+
+    <div class="view hidden" id="view-minigalaxy">
+      <div class="view-head">
+        <h2><span class="mg-pulse-dot" style="margin-right:10px;"></span>Mini GALAXY</h2>
+        <button class="btn" id="mg-add-btn">+ Add Business</button>
+      </div>
+      <div class="board" id="mg-board">
+        <div class="column" data-stage="queued"><div class="column-head"><span>Queued</span><span class="count">0</span></div><div class="cards" data-stage="queued"></div></div>
+        <div class="column" data-stage="ready"><div class="column-head"><span>Ready (site live)</span><span class="count">0</span></div><div class="cards" data-stage="ready"></div></div>
+        <div class="column" data-stage="sent"><div class="column-head"><span>Pitched</span><span class="count">0</span></div><div class="cards" data-stage="sent"></div></div>
+        <div class="column" data-stage="rejected"><div class="column-head"><span>Rejected</span><span class="count">0</span></div><div class="cards" data-stage="rejected"></div></div>
       </div>
     </div>
   </div>
@@ -226,6 +265,24 @@
       <div style="display:flex; gap:10px; margin-left:auto;">
         <button class="btn ghost" id="cancel-btn">Cancel</button>
         <button class="btn" id="save-lead-btn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="mg-modal-backdrop">
+  <div class="modal">
+    <h2 id="mg-modal-title">Add Business</h2>
+    <div class="field"><label>Business name</label><input type="text" id="mg-f-name"></div>
+    <div class="field"><label>Town</label><input type="text" id="mg-f-town"></div>
+    <div class="field"><label>Phone</label><input type="text" id="mg-f-phone"></div>
+    <div class="field"><label>Email</label><input type="text" id="mg-f-email"></div>
+    <div class="field"><label>Live URL (once site's hosted)</label><input type="text" id="mg-f-liveurl"></div>
+    <div class="modal-actions">
+      <button class="btn danger" id="mg-delete-btn" style="display:none;">Delete</button>
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="btn ghost" id="mg-cancel-btn">Cancel</button>
+        <button class="btn" id="mg-save-btn">Save</button>
       </div>
     </div>
   </div>
@@ -347,7 +404,24 @@ async function enterDashboard(){
   document.querySelector('.back-link').style.display = 'none';
   await loadLeads();
   render();
+  await mgLoadLeads();
+  mgRender();
+  updateMgPill();
+  setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
 }
+
+// ---- Tab switching ----
+document.querySelectorAll('.tab-link[data-tab]').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.tab-link[data-tab]').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+    document.getElementById('view-' + link.dataset.tab).classList.remove('hidden');
+  });
+});
+document.getElementById('mg-pill').addEventListener('click', () => {
+  document.querySelector('.tab-link[data-tab="minigalaxy"]').click();
+});
 
 // ---- Leads (Supabase-backed) ----
 async function loadLeads(){
@@ -477,6 +551,165 @@ document.getElementById('delete-lead-btn').addEventListener('click', async () =>
     render();
     closeModal();
   }
+});
+
+// ==================================================================
+// ---- Mini GALAXY (Cloudflare Worker-backed, separate from leads) ----
+// ==================================================================
+const MG_WORKER_URL = 'https://aiditworker.themarketinginninbox.workers.dev';
+let mgLeads = [];
+let mgEditingId = null;
+
+async function mgLoadLeads(){
+  try{
+    const res = await fetch(MG_WORKER_URL + '/leads');
+    if(!res.ok) return;
+    const data = await res.json();
+    mgLeads = Array.isArray(data) ? data : [];
+  }catch(err){
+    console.error('Mini GALAXY fetch failed:', err);
+  }
+}
+
+function updateMgPill(){
+  const pill = document.getElementById('mg-pill');
+  const text = document.getElementById('mg-pill-text');
+  const active = mgLeads.filter(l => l.status === 'queued' || l.status === 'ready').length;
+  if(active > 0){
+    pill.style.display = 'flex';
+    text.textContent = `Mini GALAXY — ${active} lead${active === 1 ? '' : 's'} in progress`;
+  } else {
+    pill.style.display = 'none';
+  }
+}
+
+function mgRender(){
+  document.querySelectorAll('#mg-board .cards').forEach(col => col.innerHTML = '');
+  const stages = ['queued','ready','sent','rejected'];
+  stages.forEach(stage => {
+    const items = mgLeads.filter(l => l.status === stage);
+    const col = document.querySelector('#mg-board .cards[data-stage="'+stage+'"]');
+    document.querySelector('#mg-board .column[data-stage="'+stage+'"] .count').textContent = items.length;
+    if(items.length === 0){
+      const hint = document.createElement('div');
+      hint.className = 'empty-hint';
+      hint.textContent = 'No businesses here';
+      col.appendChild(hint);
+      return;
+    }
+    items.forEach(lead => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.draggable = true;
+      card.dataset.id = lead.id;
+      card.innerHTML =
+        '<div class="biz"><span class="mg-pulse-dot" style="margin-right:6px; width:6px; height:6px;"></span>' + escapeHtml(lead.name) + '</div>' +
+        (lead.town ? '<div class="meta">' + escapeHtml(lead.town) + '</div>' : '') +
+        (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
+        (lead.email ? '<div class="meta">' + escapeHtml(lead.email) + '</div>' : '') +
+        (lead.live_url ? '<span class="src">LIVE SITE</span>' : '');
+      card.addEventListener('click', () => mgOpenModal(lead.id));
+      card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', lead.id));
+      col.appendChild(card);
+    });
+  });
+}
+
+document.querySelectorAll('#mg-board .cards').forEach(col => {
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+  col.addEventListener('drop', async e => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const id = e.dataTransfer.getData('text/plain');
+    const lead = mgLeads.find(l => l.id === id);
+    if(lead){
+      lead.status = col.dataset.stage;
+      try{
+        await fetch(MG_WORKER_URL + '/leads/' + id, {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ status: lead.status })
+        });
+      }catch(err){ console.error('Mini GALAXY update failed:', err); }
+      mgRender();
+      updateMgPill();
+    }
+  });
+});
+
+function mgOpenModal(id){
+  const deleteBtn = document.getElementById('mg-delete-btn');
+  if(id){
+    mgEditingId = id;
+    const lead = mgLeads.find(l => l.id === id);
+    document.getElementById('mg-modal-title').textContent = 'Edit Business';
+    document.getElementById('mg-f-name').value = lead.name || '';
+    document.getElementById('mg-f-town').value = lead.town || '';
+    document.getElementById('mg-f-phone').value = lead.phone || '';
+    document.getElementById('mg-f-email').value = lead.email || '';
+    document.getElementById('mg-f-liveurl').value = lead.live_url || '';
+    deleteBtn.style.display = 'inline-block';
+  } else {
+    mgEditingId = null;
+    document.getElementById('mg-modal-title').textContent = 'Add Business';
+    document.getElementById('mg-f-name').value = '';
+    document.getElementById('mg-f-town').value = '';
+    document.getElementById('mg-f-phone').value = '';
+    document.getElementById('mg-f-email').value = '';
+    document.getElementById('mg-f-liveurl').value = '';
+    deleteBtn.style.display = 'none';
+  }
+  document.getElementById('mg-modal-backdrop').classList.add('open');
+}
+function mgCloseModal(){
+  document.getElementById('mg-modal-backdrop').classList.remove('open');
+  mgEditingId = null;
+}
+
+document.getElementById('mg-add-btn').addEventListener('click', () => mgOpenModal(null));
+document.getElementById('mg-cancel-btn').addEventListener('click', mgCloseModal);
+document.getElementById('mg-modal-backdrop').addEventListener('click', e => {
+  if(e.target.id === 'mg-modal-backdrop') mgCloseModal();
+});
+
+document.getElementById('mg-save-btn').addEventListener('click', async () => {
+  const name = document.getElementById('mg-f-name').value.trim();
+  if(!name){ document.getElementById('mg-f-name').focus(); return; }
+  const data = {
+    name,
+    town: document.getElementById('mg-f-town').value.trim(),
+    phone: document.getElementById('mg-f-phone').value.trim(),
+    email: document.getElementById('mg-f-email').value.trim(),
+    live_url: document.getElementById('mg-f-liveurl').value.trim()
+  };
+  try{
+    if(mgEditingId){
+      await fetch(MG_WORKER_URL + '/leads/' + mgEditingId, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)
+      });
+    } else {
+      await fetch(MG_WORKER_URL + '/leads', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...data, status:'queued' })
+      });
+    }
+    await mgLoadLeads();
+    mgRender();
+    updateMgPill();
+  }catch(err){ console.error('Mini GALAXY save failed:', err); }
+  mgCloseModal();
+});
+
+document.getElementById('mg-delete-btn').addEventListener('click', async () => {
+  if(!mgEditingId) return;
+  try{
+    await fetch(MG_WORKER_URL + '/leads/' + mgEditingId, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' })
+    });
+    await mgLoadLeads();
+    mgRender();
+    updateMgPill();
+  }catch(err){ console.error('Mini GALAXY delete failed:', err); }
+  mgCloseModal();
 });
 
 boot();
