@@ -655,11 +655,11 @@ function displayName(user){
 }
 
 let mgInterval = null;
-function mgSetMachine(on){
+function applyMachineUI(on){
   document.getElementById('mg-machine-toggle').checked = on;
   document.getElementById('mg-machine-state').textContent = on ? 'On' : 'Off';
   document.querySelector('.mg-scale').classList.toggle('mg-off', !on);
-  localStorage.setItem('mg_machine_on', on ? '1' : '0');
+  document.getElementById('mg-agent-wrap').style.display = on ? 'flex' : 'none';
   if(on){
     if(!mgInterval){
       mgInterval = setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
@@ -669,16 +669,27 @@ function mgSetMachine(on){
     mgInterval = null;
   }
 }
-document.getElementById('mg-machine-toggle').addEventListener('change', e => mgSetMachine(e.target.checked));
 
-async function mgCheckAgentVisible(){
+async function mgSyncMachineFromServer(){
   try{
     const res = await fetch(MG_WORKER_URL + '/machine');
     if(!res.ok) return;
     const data = await res.json();
-    document.getElementById('mg-agent-wrap').style.display = data.machine_on ? 'flex' : 'none';
-  }catch(err){ console.error('Machine state check failed:', err); }
+    applyMachineUI(!!data.machine_on);
+  }catch(err){ console.error('Machine sync failed:', err); }
 }
+
+async function mgSetMachine(on){
+  applyMachineUI(on); // reflect the click immediately
+  try{
+    await fetch(MG_WORKER_URL + '/machine', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ on })
+    });
+  }catch(err){
+    console.error('Failed to update machine state on server:', err);
+  }
+}
+document.getElementById('mg-machine-toggle').addEventListener('change', e => mgSetMachine(e.target.checked));
 
 async function enterDashboard(){
   document.getElementById('user-name').textContent = displayName(currentUser);
@@ -690,9 +701,8 @@ async function enterDashboard(){
   await mgLoadLeads();
   mgRender();
   updateMgPill();
-  mgSetMachine(localStorage.getItem('mg_machine_on') === '1');
-  await mgCheckAgentVisible();
-  setInterval(mgCheckAgentVisible, 20000);
+  await mgSyncMachineFromServer();
+  setInterval(mgSyncMachineFromServer, 20000);
 }
 
 // ---- Tab switching ----
