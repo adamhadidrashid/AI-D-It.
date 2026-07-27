@@ -628,6 +628,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+try{
 (function(){
   const canvas = document.getElementById('sphere-canvas');
   const size = Math.min(900, window.innerWidth);
@@ -707,8 +708,10 @@
     renderer.setSize(s, s);
   });
 })();
+}catch(err){ console.error('Sphere init failed:', err); }
 
 // Services accordion
+try{
 document.querySelectorAll('#services-accordion .acc-item').forEach(item => {
   const trigger = item.querySelector('.acc-trigger');
   const panel = item.querySelector('.acc-panel');
@@ -727,6 +730,7 @@ document.querySelectorAll('#services-accordion .acc-item').forEach(item => {
     }
   });
 });
+}catch(err){ console.error('Accordion init failed:', err); }
 
 // Scroll-triggered section reveals
 const revealObserver = new IntersectionObserver((entries) => {
@@ -739,6 +743,12 @@ const revealObserver = new IntersectionObserver((entries) => {
 }, { threshold:0.12, rootMargin:'0px 0px -60px 0px' });
 
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// Safety net: force-reveal anything still hidden after a few seconds,
+// in case the observer never fires for some reason.
+setTimeout(() => {
+  document.querySelectorAll('.reveal:not(.in-view)').forEach(el => el.classList.add('in-view'));
+}, 4000);
 
 // Pixel dissolve page-load reveal
 window.addEventListener('load', () => {
