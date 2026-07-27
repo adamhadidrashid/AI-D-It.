@@ -765,23 +765,32 @@ document.querySelectorAll('#services-accordion .acc-item').forEach(item => {
 }catch(err){ console.error('Accordion init failed:', err); }
 
 // Scroll-triggered section reveals
-// (observing a plain sentinel per section, not the clipped/filtered section
-// itself, since clip-path + filter can make some browsers miscalculate
-// intersection on the actual styled element)
-const revealObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if(entry.isIntersecting){
-      const section = entry.target.closest('.reveal');
-      if(section) section.classList.add('in-view');
-      revealObserver.unobserve(entry.target);
+// Using a direct getBoundingClientRect check on scroll (rAF-throttled) rather
+// than IntersectionObserver — IntersectionObserver schedules its callback
+// asynchronously and can lag behind a continuously-rendering WebGL scene,
+// which is what caused the "scroll down does nothing, scroll up then down
+// works" bug. Checking rects directly inside a scroll-driven rAF callback
+// keeps this on the same clock as everything else that already updates
+// smoothly (like the sphere's rotation).
+function checkReveals(){
+  document.querySelectorAll('.reveal:not(.in-view)').forEach(section => {
+    const rect = section.getBoundingClientRect();
+    if(rect.top < window.innerHeight * 0.88){
+      section.classList.add('in-view');
     }
   });
-}, { threshold:0, rootMargin:'0px 0px -15% 0px' });
-
-document.querySelectorAll('.reveal-sentinel').forEach(el => revealObserver.observe(el));
+}
+let revealTicking = false;
+window.addEventListener('scroll', () => {
+  if(!revealTicking){
+    revealTicking = true;
+    requestAnimationFrame(() => { checkReveals(); revealTicking = false; });
+  }
+}, { passive:true });
+checkReveals();
 
 // Safety net: force-reveal anything still hidden after a few seconds,
-// in case the observer never fires for some reason.
+// in case scroll/rAF checks somehow never catch a section.
 setTimeout(() => {
   document.querySelectorAll('.reveal:not(.in-view)').forEach(el => el.classList.add('in-view'));
 }, 4000);
