@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI'D IT — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --void:#07070a; --void-2:#0d0d12; --card:#111117;
+    --bone:#f2f4f7; --bone-dim:#a6adb8; --steel:#484e59;
+    --ember:#2ee6ff; --blood:#ff2e9a; --violet:#9d5cff;
+    --hair:rgba(46,230,255,0.14);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ background:var(--void); color:var(--bone); font-family:'IBM Plex Sans', sans-serif; min-height:100vh; }
+  .hidden{ display:none !important; }
+
+  /* ---- shared bits ---- */
+  .btn{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
+    padding:12px 20px; border:1px solid var(--ember); color:var(--ember);
+    background:transparent; cursor:pointer; transition:all .2s;
+  }
+  .btn:hover{ background:var(--ember); color:var(--void); }
+  .btn.ghost{ border-color:var(--steel); color:var(--bone-dim); }
+  .btn.ghost:hover{ background:var(--steel); color:var(--bone); }
+  .field label{ display:block; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--bone-dim); margin-bottom:6px; }
+  .field input, .field select, .field textarea{
+    width:100%; background:transparent; border:1px solid var(--steel); color:var(--bone);
+    font-family:'IBM Plex Sans', sans-serif; font-size:14px; padding:10px 12px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--ember); }
+  .center-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .panel{ width:100%; max-width:380px; background:var(--void-2); border:1px solid var(--hair); padding:32px; display:flex; flex-direction:column; gap:16px; }
+  .panel h1{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:26px; }
+  .panel h1 span{ color:var(--ember); }
+  .panel p.sub{ color:var(--bone-dim); font-size:13px; line-height:1.6; margin-top:-8px; }
+  .error-msg{ color:var(--blood); font-size:12px; font-family:'IBM Plex Mono', monospace; }
+
+  /* ---- dashboard shell ---- */
+  #app-shell{ display:flex; min-height:100vh; }
+  .sidebar{
+    width:190px; flex-shrink:0; border-right:1px solid var(--hair);
+    background:var(--void-2); padding:22px 0; display:flex; flex-direction:column; gap:4px;
+  }
+  .sidebar .logotype{ font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:18px; text-transform:uppercase; padding:0 20px 20px; letter-spacing:0.02em; }
+  .sidebar .logotype span{ color:var(--ember); }
+  .tab-link{
+    display:block; padding:12px 20px; font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--bone-dim); text-decoration:none; cursor:pointer; border-left:2px solid transparent;
+  }
+  .tab-link:hover{ color:var(--bone); }
+  .tab-link.active{ color:var(--ember); border-left-color:var(--ember); background:rgba(46,230,255,0.05); }
+  .tab-link.disabled{ color:var(--steel); cursor:default; }
+  .tab-link.disabled:hover{ color:var(--steel); }
+
+  .main-col{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .topbar{
+    display:flex; justify-content:flex-end; align-items:center;
+    padding:16px 26px; border-bottom:1px solid var(--hair);
+  }
+  .user-pill{
+    display:flex; align-items:center; gap:10px; position:relative; cursor:pointer;
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.05em; text-transform:uppercase;
+  }
+  .user-pill .dot{ width:8px; height:8px; border-radius:50%; background:var(--ember); box-shadow:0 0 8px var(--ember); }
+  .user-menu{
+    position:absolute; top:calc(100% + 8px); right:0; background:var(--void-2); border:1px solid var(--hair);
+    min-width:140px; display:none; flex-direction:column; z-index:20;
+  }
+  .user-menu.open{ display:flex; }
+  .user-menu button{
+    background:none; border:none; color:var(--bone-dim); text-align:left; padding:12px 16px;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer;
+  }
+  .user-menu button:hover{ color:var(--blood); }
+
+  .view{ padding:24px 26px; flex:1; }
+
+  /* ---- leads board (same as tracker, reused) ---- */
+  .board{ display:grid; grid-template-columns:repeat(5, minmax(200px, 1fr)); gap:14px; overflow-x:auto; }
+  @media (max-width:900px){ .board{ grid-template-columns:1fr; } }
+  .column{ background:var(--void-2); border:1px solid var(--hair); min-height:180px; display:flex; flex-direction:column; }
+  .column-head{ padding:14px 16px; border-bottom:1px solid var(--hair); display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; }
+  .column[data-stage="new"] .column-head{ color:var(--ember); }
+  .column[data-stage="contacted"] .column-head{ color:var(--violet); }
+  .column[data-stage="audit"] .column-head{ color:var(--blood); }
+  .column[data-stage="won"] .column-head{ color:#4ee08a; }
+  .column[data-stage="lost"] .column-head{ color:var(--steel); }
+  .cards{ flex:1; padding:10px; display:flex; flex-direction:column; gap:10px; min-height:60px; }
+  .cards.drag-over{ background:rgba(46,230,255,0.05); }
+  .card{ background:var(--card); border:1px solid var(--hair); padding:12px 14px; cursor:grab; transition:border-color .15s; }
+  .card:hover{ border-color:var(--ember); }
+  .card .biz{ font-family:'Big Shoulders Display', sans-serif; font-weight:600; font-size:16px; text-transform:uppercase; }
+  .card .meta{ font-size:12px; color:var(--bone-dim); margin-top:4px; }
+  .card .src{ display:inline-block; margin-top:8px; font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.08em; color:var(--steel); text-transform:uppercase; border:1px solid var(--steel); padding:2px 6px; }
+  .empty-hint{ padding:20px 12px; color:var(--steel); font-size:12px; text-align:center; }
+
+  .view-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+  .view-head h2{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:24px; }
+
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; }
+  .modal-backdrop.open{ display:flex; }
+  .modal{ background:var(--void-2); border:1px solid var(--hair); width:100%; max-width:420px; padding:26px; display:flex; flex-direction:column; gap:14px; }
+  .modal h2{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:22px; }
+  .modal-actions{ display:flex; gap:10px; justify-content:space-between; margin-top:6px; }
+  .btn.danger{ border-color:var(--blood); color:var(--blood); }
+  .btn.danger:hover{ background:var(--blood); color:var(--void); }
+</style>
+</head>
+<body>
+
+<!-- STEP 1: Supabase connection setup (one-time, stored locally) -->
+<div id="setup-screen" class="center-screen">
+  <div class="panel">
+    <h1>AI<span>'D</span> IT — Setup</h1>
+    <p class="sub">Paste your Supabase project URL and anon key (Project Settings → API). Stored only in this browser.</p>
+    <div class="field"><label>Supabase URL</label><input type="text" id="setup-url" placeholder="https://xxxx.supabase.co"></div>
+    <div class="field"><label>Anon public key</label><input type="text" id="setup-key" placeholder="eyJhbGciOi..."></div>
+    <div class="error-msg" id="setup-error"></div>
+    <button class="btn" id="setup-save">Connect</button>
+  </div>
+</div>
+
+<!-- STEP 2: Login -->
+<div id="login-screen" class="center-screen hidden">
+  <div class="panel">
+    <h1>AI<span>'D</span> IT — Login</h1>
+    <div class="field"><label>Email</label><input type="email" id="login-email"></div>
+    <div class="field"><label>Password</label><input type="password" id="login-password"></div>
+    <div class="error-msg" id="login-error"></div>
+    <button class="btn" id="login-submit">Log in</button>
+    <button class="btn ghost" id="reset-connection" style="margin-top:4px;">Change Supabase connection</button>
+  </div>
+</div>
+
+<!-- STEP 3: Dashboard -->
+<div id="app-shell" class="hidden">
+  <div class="sidebar">
+    <div class="logotype">AI<span>'D</span> IT</div>
+    <a class="tab-link active" data-tab="leads">Leads</a>
+    <a class="tab-link disabled" title="Add more tabs later">+ More soon</a>
+  </div>
+  <div class="main-col">
+    <div class="topbar">
+      <div class="user-pill" id="user-pill">
+        <span class="dot"></span>
+        <span id="user-name">—</span>
+        <div class="user-menu" id="user-menu">
+          <button id="logout-btn">Log out</button>
+        </div>
+      </div>
+    </div>
+    <div class="view" id="view-leads">
+      <div class="view-head">
+        <h2>Leads</h2>
+        <button class="btn" id="add-lead-btn">+ Add Lead</button>
+      </div>
+      <div class="board" id="board">
+        <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
+        <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
+        <div class="column" data-stage="audit"><div class="column-head"><span>Audit Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
+        <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
+        <div class="column" data-stage="lost"><div class="column-head"><span>Lost</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <h2 id="modal-title">Add Lead</h2>
+    <div class="field"><label>Business name</label><input type="text" id="f-biz"></div>
+    <div class="field"><label>Contact name</label><input type="text" id="f-contact"></div>
+    <div class="field"><label>Phone / email</label><input type="text" id="f-phone"></div>
+    <div class="field"><label>Source</label>
+      <select id="f-source">
+        <option value="Cold approach">Cold approach</option>
+        <option value="Referral">Referral</option>
+        <option value="Network">Existing network</option>
+        <option value="Inbound">Inbound / site enquiry</option>
+      </select>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="f-notes" rows="3"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn danger" id="delete-lead-btn" style="display:none;">Delete</button>
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="btn ghost" id="cancel-btn">Cancel</button>
+        <button class="btn" id="save-lead-btn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS_URL = 'aidit_sb_url';
+const LS_KEY = 'aidit_sb_key';
+let supabase = null;
+let currentUser = null;
+let leads = [];
+let editingId = null;
+
+function show(id){ document.getElementById(id).classList.remove('hidden'); }
+function hide(id){ document.getElementById(id).classList.add('hidden'); }
+
+function initSupabaseFromStorage(){
+  const url = localStorage.getItem(LS_URL);
+  const key = localStorage.getItem(LS_KEY);
+  if(url && key){
+    supabase = window.supabase.createClient(url, key);
+    return true;
+  }
+  return false;
+}
+
+async function boot(){
+  if(initSupabaseFromStorage()){
+    hide('setup-screen');
+    const { data } = await supabase.auth.getSession();
+    if(data.session){
+      currentUser = data.session.user;
+      enterDashboard();
+    } else {
+      show('login-screen');
+    }
+  } else {
+    show('setup-screen');
+  }
+}
+
+document.getElementById('setup-save').addEventListener('click', () => {
+  const url = document.getElementById('setup-url').value.trim();
+  const key = document.getElementById('setup-key').value.trim();
+  if(!url || !key){
+    document.getElementById('setup-error').textContent = 'Both fields are required.';
+    return;
+  }
+  localStorage.setItem(LS_URL, url);
+  localStorage.setItem(LS_KEY, key);
+  hide('setup-screen');
+  boot();
+});
+
+document.getElementById('reset-connection').addEventListener('click', () => {
+  localStorage.removeItem(LS_URL);
+  localStorage.removeItem(LS_KEY);
+  hide('login-screen');
+  show('setup-screen');
+});
+
+document.getElementById('login-submit').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){
+    errEl.textContent = error.message;
+    return;
+  }
+  currentUser = data.user;
+  hide('login-screen');
+  enterDashboard();
+});
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  currentUser = null;
+  hide('app-shell');
+  show('login-screen');
+});
+
+document.getElementById('user-pill').addEventListener('click', (e) => {
+  document.getElementById('user-menu').classList.toggle('open');
+  e.stopPropagation();
+});
+document.addEventListener('click', () => document.getElementById('user-menu').classList.remove('open'));
+
+function displayName(user){
+  const meta = user.user_metadata || {};
+  if(meta.full_name) return meta.full_name;
+  if(meta.name) return meta.name;
+  return (user.email || '').split('@')[0];
+}
+
+async function enterDashboard(){
+  document.getElementById('user-name').textContent = displayName(currentUser);
+  show('app-shell');
+  document.getElementById('app-shell').style.display = 'flex';
+  await loadLeads();
+  render();
+}
+
+// ---- Leads (Supabase-backed) ----
+async function loadLeads(){
+  const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending:true });
+  if(error){ console.error(error); leads = []; return; }
+  leads = data.map(row => ({
+    id: row.id, biz: row.biz, contact: row.contact, phone: row.phone,
+    source: row.source, notes: row.notes, stage: row.stage
+  }));
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+function render(){
+  document.querySelectorAll('.cards').forEach(col => col.innerHTML = '');
+  const stages = ['new','contacted','audit','won','lost'];
+  stages.forEach(stage => {
+    const items = leads.filter(l => l.stage === stage);
+    const col = document.querySelector('.cards[data-stage="'+stage+'"]');
+    document.querySelector('.column[data-stage="'+stage+'"] .count').textContent = items.length;
+    if(items.length === 0){
+      const hint = document.createElement('div');
+      hint.className = 'empty-hint';
+      hint.textContent = 'No leads here';
+      col.appendChild(hint);
+      return;
+    }
+    items.forEach(lead => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.draggable = true;
+      card.dataset.id = lead.id;
+      card.innerHTML =
+        '<div class="biz">' + escapeHtml(lead.biz) + '</div>' +
+        (lead.contact ? '<div class="meta">' + escapeHtml(lead.contact) + '</div>' : '') +
+        (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
+        '<span class="src">' + escapeHtml(lead.source || '') + '</span>';
+      card.addEventListener('click', () => openModal(lead.id));
+      card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', lead.id));
+      col.appendChild(card);
+    });
+  });
+}
+
+document.querySelectorAll('.cards').forEach(col => {
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+  col.addEventListener('drop', async e => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const id = e.dataTransfer.getData('text/plain');
+    const lead = leads.find(l => l.id === id);
+    if(lead){
+      lead.stage = col.dataset.stage;
+      await supabase.from('leads').update({ stage: lead.stage }).eq('id', id);
+      render();
+    }
+  });
+});
+
+function openModal(id){
+  const deleteBtn = document.getElementById('delete-lead-btn');
+  if(id){
+    editingId = id;
+    const lead = leads.find(l => l.id === id);
+    document.getElementById('modal-title').textContent = 'Edit Lead';
+    document.getElementById('f-biz').value = lead.biz || '';
+    document.getElementById('f-contact').value = lead.contact || '';
+    document.getElementById('f-phone').value = lead.phone || '';
+    document.getElementById('f-source').value = lead.source || 'Cold approach';
+    document.getElementById('f-notes').value = lead.notes || '';
+    deleteBtn.style.display = 'inline-block';
+  } else {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Add Lead';
+    document.getElementById('f-biz').value = '';
+    document.getElementById('f-contact').value = '';
+    document.getElementById('f-phone').value = '';
+    document.getElementById('f-source').value = 'Cold approach';
+    document.getElementById('f-notes').value = '';
+    deleteBtn.style.display = 'none';
+  }
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('modal-backdrop').classList.remove('open');
+  editingId = null;
+}
+
+document.getElementById('add-lead-btn').addEventListener('click', () => openModal(null));
+document.getElementById('cancel-btn').addEventListener('click', closeModal);
+document.getElementById('modal-backdrop').addEventListener('click', e => {
+  if(e.target.id === 'modal-backdrop') closeModal();
+});
+
+document.getElementById('save-lead-btn').addEventListener('click', async () => {
+  const biz = document.getElementById('f-biz').value.trim();
+  if(!biz){ document.getElementById('f-biz').focus(); return; }
+  const data = {
+    biz,
+    contact: document.getElementById('f-contact').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    source: document.getElementById('f-source').value,
+    notes: document.getElementById('f-notes').value.trim()
+  };
+  if(editingId){
+    await supabase.from('leads').update(data).eq('id', editingId);
+    Object.assign(leads.find(l => l.id === editingId), data);
+  } else {
+    const { data: inserted, error } = await supabase.from('leads').insert({ ...data, stage:'new' }).select().single();
+    if(!error){
+      leads.push({ id: inserted.id, stage:'new', ...data });
+    }
+  }
+  render();
+  closeModal();
+});
+
+document.getElementById('delete-lead-btn').addEventListener('click', async () => {
+  if(editingId){
+    await supabase.from('leads').delete().eq('id', editingId);
+    leads = leads.filter(l => l.id !== editingId);
+    render();
+    closeModal();
+  }
+});
+
+boot();
+</script>
+
+</body>
+</html>
