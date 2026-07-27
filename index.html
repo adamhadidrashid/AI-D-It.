@@ -288,6 +288,85 @@
     *{ animation:none !important; transition:none !important; }
   }
 
+  /* ---------- CHAT WIDGET ---------- */
+  #chat-fab{
+    position:fixed; bottom:26px; right:26px; z-index:200;
+    width:58px; height:58px; border-radius:50%;
+    background:var(--void-2); border:1px solid var(--ember);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 0 18px rgba(46,230,255,0.35);
+    transition:transform .2s ease;
+  }
+  #chat-fab:hover{ transform:scale(1.06); }
+  #chat-fab svg{ width:30px; height:30px; }
+
+  #chat-panel{
+    position:fixed; bottom:96px; right:26px; z-index:200;
+    width:min(360px, calc(100vw - 40px)); height:min(520px, calc(100vh - 140px));
+    background:var(--void-2); border:1px solid var(--hair);
+    display:none; flex-direction:column; overflow:hidden;
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+  }
+  #chat-panel.open{ display:flex; }
+  .chat-head{
+    padding:16px 18px; border-bottom:1px solid var(--hair);
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:16px;
+  }
+  .chat-head span.dot{ width:8px; height:8px; border-radius:50%; background:var(--ember); box-shadow:0 0 8px var(--ember); display:inline-block; margin-right:8px; }
+  .chat-close{ cursor:pointer; color:var(--bone-dim); font-family:'IBM Plex Mono', monospace; font-size:16px; background:none; border:none; }
+  .chat-close:hover{ color:var(--blood); }
+
+  .chat-body{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .chat-body::-webkit-scrollbar{ width:6px; }
+  .chat-body::-webkit-scrollbar-thumb{ background:var(--ember); }
+
+  .msg-bot{
+    background:var(--void); border:1px solid var(--hair); padding:10px 14px;
+    font-size:13.5px; line-height:1.55; color:var(--bone); max-width:88%;
+    align-self:flex-start;
+  }
+  .msg-user{
+    background:rgba(46,230,255,0.1); border:1px solid var(--hair); padding:10px 14px;
+    font-size:13.5px; line-height:1.55; color:var(--bone); max-width:88%;
+    align-self:flex-end;
+  }
+  .chat-btn-row{ display:flex; flex-wrap:wrap; gap:8px; align-self:flex-start; max-width:100%; }
+  .chat-btn{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.04em; text-transform:uppercase;
+    padding:9px 14px; border:1px solid var(--ember); color:var(--ember); background:transparent;
+    cursor:pointer; transition:all .2s;
+  }
+  .chat-btn:hover{ background:var(--ember); color:var(--void); }
+  .chat-btn.secondary{ border-color:var(--steel); color:var(--bone-dim); }
+  .chat-btn.secondary:hover{ background:var(--steel); color:var(--bone); }
+  .chat-link{ color:var(--ember); text-decoration:underline; cursor:pointer; background:none; border:none; font-size:13.5px; font-family:inherit; padding:0; }
+
+  .chat-form{
+    background:var(--void); border:1px solid var(--hair); padding:14px; display:flex; flex-direction:column; gap:10px;
+    align-self:stretch; max-width:100%;
+  }
+  .chat-form label{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); }
+  .chat-form input{
+    background:transparent; border:1px solid var(--steel); color:var(--bone);
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px; padding:8px 10px; width:100%;
+  }
+  .chat-form input:focus{ outline:none; border-color:var(--ember); }
+
+  .chat-input-row{ display:flex; border-top:1px solid var(--hair); }
+  .chat-input-row input{
+    flex:1; background:transparent; border:none; color:var(--bone); padding:14px 16px;
+    font-family:'IBM Plex Sans', sans-serif; font-size:13.5px;
+  }
+  .chat-input-row input:focus{ outline:none; }
+  .chat-input-row button{
+    background:none; border:none; color:var(--ember); padding:0 18px;
+    font-family:'IBM Plex Mono', monospace; font-size:12px; text-transform:uppercase; cursor:pointer;
+  }
+  @media (prefers-reduced-motion: reduce){
+    #chat-fab{ transition:none; }
+  }
+
   /* ---------- SCROLL REVEAL ---------- */
   .reveal{
     opacity:0;
@@ -854,6 +933,282 @@ window.addEventListener('load', () => {
   overlay.querySelectorAll('div').forEach(d => { d.style.opacity = '0'; });
   setTimeout(() => overlay.classList.add('done'), 950);
 });
+</script>
+
+<!-- Chat widget -->
+<div id="chat-fab" role="button" aria-label="Open chat" tabindex="0">
+  <svg viewBox="0 0 48 48" fill="none">
+    <rect x="10" y="16" width="28" height="20" rx="6" stroke="#2ee6ff" stroke-width="2"/>
+    <rect x="20" y="6" width="8" height="10" rx="3" stroke="#2ee6ff" stroke-width="2"/>
+    <circle cx="24" cy="8" r="2" fill="#2ee6ff"/>
+    <circle cx="18" cy="26" r="3" fill="#2ee6ff"/>
+    <circle cx="30" cy="26" r="3" fill="#2ee6ff"/>
+    <path d="M18 32h12" stroke="#2ee6ff" stroke-width="2" stroke-linecap="round"/>
+    <path d="M4 24h6M38 24h6" stroke="#2ee6ff" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<div id="chat-panel">
+  <div class="chat-head">
+    <div><span class="dot"></span>AI'D IT ASSISTANT</div>
+    <button class="chat-close" id="chat-close" aria-label="Close chat">✕</button>
+  </div>
+  <div class="chat-body" id="chat-body"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chat-text-input" placeholder="Type a message...">
+    <button id="chat-text-send">Send</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+try{
+/* ===== CONFIG =====
+   Fill in the same Supabase project URL + anon key used for admin.html.
+   The anon key is safe to expose publicly — it only allows what the
+   RLS policies permit (public insert into leads, nothing else). */
+const CHAT_SUPABASE_URL = 'https://vkxjtzqvyxftizvmyrkn.supabase.co';
+const CHAT_SUPABASE_ANON_KEY = 'sb_publishable_5VBsCwcISlbQt5uOvokVcw_PBkxFy8e';
+const chatSupabase = (CHAT_SUPABASE_URL.startsWith('http'))
+  ? window.supabase.createClient(CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY)
+  : null;
+
+const SERVICES = [
+  { key:'customer', title:'Call & chat handling', detail:"AI receptionists that answer after-hours or overflow calls, website chatbots that qualify enquiries, DM auto-response on Instagram/WhatsApp, and phone-based booking. Small businesses miss around 62% of incoming calls on average, and 85% of people who reach voicemail never call back — most of that is recoverable with something answering instantly, day or night." },
+  { key:'outreach', title:'Sales & pipeline', detail:"Automated cold outreach that sources and messages leads on autopilot, lead scoring so the most promising enquiries get worked first, follow-up sequences that don't rely on someone remembering, and automatic review requests at the right moment." },
+  { key:'ops', title:'Back-office automation', detail:"Scheduling and reminders that cut no-shows, invoices and expenses categorised automatically, a weekly report pulled together without anyone compiling it by hand, and quotes or contracts drafted from a template in minutes." },
+  { key:'crm', title:'CRM & systems', detail:"A CRM built from scratch for businesses still running on memory and spreadsheets, existing records cleaned and de-duplicated, automatic tagging and follow-up reminders, and customers segmented so offers actually land with the right people." },
+  { key:'presence', title:'Sites & digital front doors', detail:"Fast, focused websites built around one clear job for the visitor, landing pages built for a specific offer so ad spend has somewhere sharp to land, and content written to actually get found." },
+  { key:'signage', title:'Bespoke signage & printing', detail:"Shopfront and vehicle graphics, branded stationery and print that actually matches the rest of the identity, and large-format banners and pull-ups for events, sites, and pitches." },
+  { key:'marketing', title:'Marketing & digital presence', detail:"Ongoing social media management so posting stays consistent even on busy weeks, paid ad campaigns set up and adjusted for real return, regular photo/video content, and a periodic check that your listings and profiles are accurate." },
+  { key:'loyalty', title:'Loyalty & aftercare', detail:"Loyalty and referral schemes that bring customers back and reward them for bringing others, automatic aftercare check-ins after a purchase or job, and win-back messages for customers who've gone quiet. A 5% improvement in customer retention has been shown to lift profits by 25-95% (Bain & Company) — this is usually the highest-return thing on the whole list." },
+  { key:'bespoke', title:'Whatever the audit finds', detail:"If it's not on this list but it's costing you time or money, that's still the job — scoped and built specifically for how the business actually works." }
+];
+
+let leadInfo = { name:'', biz:'', email:'', phone:'' };
+let capturedLead = false;
+let currentServiceKey = null;
+
+const chatBody = document.getElementById('chat-body');
+const fab = document.getElementById('chat-fab');
+const panel = document.getElementById('chat-panel');
+const closeBtn = document.getElementById('chat-close');
+const textInput = document.getElementById('chat-text-input');
+const textSend = document.getElementById('chat-text-send');
+
+function openChat(){
+  panel.classList.add('open');
+  if(chatBody.children.length === 0){
+    botMessage("Hey — thanks for reaching out to AI'D It's assistant. I'm here to help you get a quick picture of what we do and how we could help your business.");
+    setTimeout(showCaptureForm, 400);
+  }
+}
+fab.addEventListener('click', openChat);
+fab.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') openChat(); });
+closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+function scrollToBottom(){ chatBody.scrollTop = chatBody.scrollHeight; }
+
+function botMessage(text){
+  const el = document.createElement('div');
+  el.className = 'msg-bot';
+  el.textContent = text;
+  chatBody.appendChild(el);
+  scrollToBottom();
+}
+function userMessage(text){
+  const el = document.createElement('div');
+  el.className = 'msg-user';
+  el.textContent = text;
+  chatBody.appendChild(el);
+  scrollToBottom();
+}
+function buttonRow(options){
+  const row = document.createElement('div');
+  row.className = 'chat-btn-row';
+  options.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'chat-btn' + (opt.secondary ? ' secondary' : '');
+    b.textContent = opt.label;
+    b.addEventListener('click', () => {
+      row.remove();
+      userMessage(opt.label);
+      opt.action();
+    });
+    row.appendChild(b);
+  });
+  chatBody.appendChild(row);
+  scrollToBottom();
+}
+
+async function saveLead(extraNote){
+  if(!chatSupabase){ console.warn('Supabase not configured for chat widget.'); return; }
+  try{
+    await chatSupabase.from('leads').insert({
+      biz: leadInfo.biz,
+      contact: leadInfo.name,
+      phone: leadInfo.phone,
+      source: 'Chatbot',
+      notes: extraNote || '',
+      stage: 'new'
+    });
+  }catch(err){ console.error('Lead save failed:', err); }
+}
+
+function showCaptureForm(){
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-form';
+  wrap.innerHTML =
+    '<label>So we know who we\'re speaking to — could you pop in a few details below?</label>' +
+    '<input type="text" id="cf-name" placeholder="Your name">' +
+    '<input type="text" id="cf-biz" placeholder="Business name">' +
+    '<input type="email" id="cf-email" placeholder="Email">' +
+    '<input type="text" id="cf-phone" placeholder="Phone (optional) *">' +
+    '<button class="chat-btn" id="cf-submit">Continue</button>';
+  chatBody.appendChild(wrap);
+  scrollToBottom();
+
+  document.getElementById('cf-submit').addEventListener('click', () => {
+    const name = document.getElementById('cf-name').value.trim();
+    const biz = document.getElementById('cf-biz').value.trim();
+    const email = document.getElementById('cf-email').value.trim();
+    const phone = document.getElementById('cf-phone').value.trim();
+
+    if(!name || !biz || !email){
+      const warn = document.createElement('div');
+      warn.className = 'msg-bot';
+      const skipBtn = document.createElement('button');
+      skipBtn.className = 'chat-link';
+      skipBtn.textContent = 'skip for now';
+      skipBtn.addEventListener('click', () => {
+        warn.remove();
+        wrap.remove();
+        userMessage('Skip for now');
+        showMainMenu();
+      });
+      warn.textContent = "You're missing a few details — try again, or ";
+      warn.appendChild(skipBtn);
+      chatBody.appendChild(warn);
+      scrollToBottom();
+      return;
+    }
+
+    leadInfo = { name, biz, email, phone };
+    capturedLead = true;
+    wrap.remove();
+    userMessage(`${name} — ${biz}`);
+    saveLead();
+    showMainMenu();
+  });
+}
+
+function showMainMenu(){
+  botMessage("What would you like to look at?");
+  buttonRow([
+    { label:'What we build', action: showServicesList },
+    { label:'Cost', action: showCost },
+    { label:'Book audit', action: showConfirmForm.bind(null, 'audit') },
+    { label:'Something else', action: showSomethingElse }
+  ]);
+}
+
+function showCost(){
+  botMessage("Cost varies from business to business — everything you need is packaged, and we offer a range of payment options too.");
+  buttonRow([
+    { label:'Request a call from a senior consultant', action: showConfirmForm.bind(null, 'call') },
+    { label:'Return to main menu', secondary:true, action: showMainMenu }
+  ]);
+}
+
+function showServicesList(){
+  botMessage("Here's everything we build — pick one for more detail:");
+  buttonRow(SERVICES.map(s => ({
+    label: s.title,
+    action: () => showServiceDetail(s.key)
+  })));
+}
+
+function showServiceDetail(key){
+  const service = SERVICES.find(s => s.key === key);
+  currentServiceKey = key;
+  botMessage(service.detail);
+  buttonRow([
+    { label:'Back to list', secondary:true, action: showServicesList },
+    { label:'Request a call', action: showConfirmForm.bind(null, 'call') },
+    { label:'Book an audit', action: showConfirmForm.bind(null, 'audit') }
+  ]);
+}
+
+function showConfirmForm(kind){
+  const isAudit = kind === 'audit';
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-form';
+  wrap.innerHTML =
+    '<label>' + (capturedLead ? 'Just confirm your details:' : "So we know who we're speaking to:") + '</label>' +
+    '<input type="text" id="cc-name" placeholder="Your name" value="' + (leadInfo.name || '') + '">' +
+    '<input type="text" id="cc-biz" placeholder="Business name" value="' + (leadInfo.biz || '') + '">' +
+    '<input type="email" id="cc-email" placeholder="Email" value="' + (leadInfo.email || '') + '">' +
+    '<input type="text" id="cc-phone" placeholder="Phone (optional) *" value="' + (leadInfo.phone || '') + '">' +
+    '<button class="chat-btn" id="cc-submit">' + (isAudit ? 'Confirm audit booking' : 'Confirm call request') + '</button>';
+  chatBody.appendChild(wrap);
+  scrollToBottom();
+
+  document.getElementById('cc-submit').addEventListener('click', () => {
+    const name = document.getElementById('cc-name').value.trim();
+    const biz = document.getElementById('cc-biz').value.trim();
+    const email = document.getElementById('cc-email').value.trim();
+    const phone = document.getElementById('cc-phone').value.trim();
+    if(!name || !biz || !email) return;
+
+    leadInfo = { name, biz, email, phone };
+    capturedLead = true;
+    wrap.remove();
+    userMessage('Confirmed');
+    const note = isAudit
+      ? 'Requested: audit booking' + (currentServiceKey ? ` (via ${currentServiceKey})` : '')
+      : 'Requested: call from a senior consultant' + (currentServiceKey ? ` (via ${currentServiceKey})` : '');
+    saveLead(note);
+    botMessage(isAudit
+      ? "You're booked — someone will follow up shortly."
+      : "Logged — a senior consultant will give you a call shortly.");
+    buttonRow([{ label:'Return to main menu', secondary:true, action: showMainMenu }]);
+  });
+}
+
+function showSomethingElse(){
+  botMessage("Type your question below and I'll pass it straight on.");
+}
+
+function handleFreeText(text){
+  userMessage(text);
+  const lower = text.toLowerCase();
+  if(/(price|cost|pricing|payment)/.test(lower)){
+    showCost();
+  } else if(/(audit|book)/.test(lower)){
+    showConfirmForm('audit');
+  } else if(/(chatbot|website|service|crm|loyalty|signage|print|marketing|receptionist)/.test(lower)){
+    showServicesList();
+  } else if(!capturedLead){
+    botMessage("Not sure I've got that one — let me grab your details and a real person will follow up.");
+    showCaptureForm();
+  } else {
+    saveLead('Message: ' + text);
+    botMessage("Thanks — that's been logged and someone will get back to you.");
+    buttonRow([{ label:'Return to main menu', secondary:true, action: showMainMenu }]);
+  }
+}
+
+textSend.addEventListener('click', () => {
+  const val = textInput.value.trim();
+  if(!val) return;
+  textInput.value = '';
+  handleFreeText(val);
+});
+textInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ textSend.click(); }
+});
+
+}catch(err){ console.error('Chat widget init failed:', err); }
 </script>
 
 </body>
