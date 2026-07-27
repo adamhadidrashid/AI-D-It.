@@ -110,7 +110,7 @@
   }
   .hero-content{
     position:relative; z-index:2; max-width:860px;
-    padding:0 20px;
+    padding:0 20px; margin-top:70px;
   }
   .hero h1{
     font-family:'Big Shoulders Display', sans-serif;
@@ -142,7 +142,10 @@
     max-width:560px;
     margin-left:auto; margin-right:auto;
   }
-  .hero-actions{ margin-top:44px; display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
+  .hero-actions{
+    position:absolute; left:50%; bottom:64px; transform:translateX(-50%);
+    z-index:3; display:flex; gap:18px; justify-content:center; flex-wrap:wrap; width:100%; padding:0 6vw;
+  }
 
   .btn{
     font-family:'IBM Plex Mono', monospace;
@@ -157,15 +160,6 @@
   .btn:hover{ background:var(--bone); color:var(--void); }
   .btn.primary{ border-color:var(--ember); color:var(--ember); }
   .btn.primary:hover{ background:var(--ember); color:var(--void); }
-
-  .scroll-cue{
-    position:absolute; bottom:36px; left:50%; transform:translateX(-50%);
-    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.3em;
-    color:var(--bone-dim); text-transform:uppercase;
-    display:flex; flex-direction:column; align-items:center; gap:10px;
-  }
-  .scroll-cue::after{ content:''; width:1px; height:36px; background:linear-gradient(var(--bone-dim), transparent); animation:scrollpulse 2s infinite; }
-  @keyframes scrollpulse{ 0%{ opacity:0.2 } 50%{ opacity:1 } 100%{ opacity:0.2 } }
 
   /* ---------- SECTION SHARED ---------- */
   section{ padding:110px 6vw; position:relative; border-top:1px solid var(--hair); }
@@ -482,13 +476,12 @@
       AUDITED.
     </h1>
     <p class="lede">We don't sell you AI. We go through your business, find exactly where it's leaking time and money, then build the specific system that fixes it — chatbots, call handling, CRM, automation, or none of the above.</p>
-    <div class="hero-actions">
-      <a href="#contact" class="btn primary">Book an audit</a>
-      <a href="#services" class="btn">See what we build</a>
-    </div>
   </div>
-  <div class="scroll-cue">Scroll</div>
-</section>
+  <div class="hero-actions">
+    <a href="#contact" class="btn primary">Book an audit</a>
+    <a href="#services" class="btn">See what we build</a>
+  </div>
+  </section>
 
 <section class="manifesto-section reveal">
   <div class="reveal-sentinel"></div>
