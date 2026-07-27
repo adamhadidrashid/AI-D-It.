@@ -324,6 +324,7 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   currentUser = null;
   hide('app-shell');
   show('login-screen');
+  document.querySelector('.back-link').style.display = 'flex';
 });
 
 document.getElementById('user-pill').addEventListener('click', (e) => {
@@ -343,6 +344,7 @@ async function enterDashboard(){
   document.getElementById('user-name').textContent = displayName(currentUser);
   show('app-shell');
   document.getElementById('app-shell').style.display = 'flex';
+  document.querySelector('.back-link').style.display = 'none';
   await loadLeads();
   render();
 }
