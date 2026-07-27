@@ -187,6 +187,14 @@
   #mg-living-sphere-label{
     font-family:'Big Shoulders Display', sans-serif; font-size:15px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
     color:var(--mg-turquoise); text-shadow:0 0 10px rgba(62,217,201,0.6);
+    transition:opacity .6s ease, color .6s ease, text-shadow .6s ease;
+  }
+  #mg-living-sphere{ transition:opacity .6s ease, filter .6s ease; }
+  #mg-living-sphere-wrap.mg-sphere-dim #mg-living-sphere{
+    opacity:0.28; filter:grayscale(0.7) brightness(0.6);
+  }
+  #mg-living-sphere-wrap.mg-sphere-dim #mg-living-sphere-label{
+    opacity:0.35; color:var(--bone-dim); text-shadow:none;
   }
   @media (max-width:720px){ #mg-living-sphere-wrap{ left:22px; } }
 
@@ -673,6 +681,7 @@ function applyMachineUI(on){
   document.getElementById('mg-machine-state').textContent = on ? 'On' : 'Off';
   document.querySelector('.mg-scale').classList.toggle('mg-off', !on);
   document.getElementById('mg-agent-wrap').style.display = on ? 'flex' : 'none';
+  document.getElementById('mg-living-sphere-wrap').classList.toggle('mg-sphere-dim', !on);
   if(on){
     if(!mgInterval){
       mgInterval = setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
@@ -725,6 +734,7 @@ document.querySelectorAll('.tab-link[data-tab]').forEach(link => {
     link.classList.add('active');
     document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
     document.getElementById('view-' + link.dataset.tab).classList.remove('hidden');
+    document.getElementById('mg-living-sphere-wrap').style.display = (link.dataset.tab === 'leads') ? 'flex' : 'none';
   });
 });
 document.getElementById('mg-pill').addEventListener('click', () => {
