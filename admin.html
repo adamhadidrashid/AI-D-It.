@@ -190,11 +190,13 @@
 
   .mg-map-wrap{ position:relative; max-width:1000px; margin:0 auto; padding-top:20px; height:190px; }
   .mg-connectors{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-  .mg-line{ fill:none; stroke-width:1.5; opacity:0.55; }
-  .mg-line-scout{ stroke:var(--mg-sapphire); }
-  .mg-line-forge{ stroke:var(--mg-ruby); }
-  .mg-line-live{ stroke:var(--mg-green); }
-  .mg-line-dispatch{ stroke:var(--mg-amber); }
+  .mg-line{ fill:none; stroke-width:3.5; opacity:0.9; stroke-linecap:round; stroke-dasharray:10 9; animation:mgLineFlow 1.6s linear infinite; }
+  @keyframes mgLineFlow{ to{ stroke-dashoffset:-19; } }
+  .mg-line-scout{ stroke:var(--mg-sapphire); filter:drop-shadow(0 0 4px var(--mg-sapphire)); }
+  .mg-line-forge{ stroke:var(--mg-ruby); filter:drop-shadow(0 0 4px var(--mg-ruby)); }
+  .mg-line-live{ stroke:var(--mg-green); filter:drop-shadow(0 0 4px var(--mg-green)); }
+  .mg-line-dispatch{ stroke:var(--mg-amber); filter:drop-shadow(0 0 4px var(--mg-amber)); }
+  @media (prefers-reduced-motion: reduce){ .mg-line{ animation:none; } }
   .mg-node{
     width:170px; margin:0 auto; position:relative; z-index:2;
     background:var(--mg-panel); border:1px solid rgba(62,217,201,0.35); border-radius:10px;
@@ -204,7 +206,7 @@
   .mg-node-name{ font-family:'Big Shoulders Display', sans-serif; font-weight:700; letter-spacing:0.04em; color:var(--mg-turquoise); }
   .mg-node-sub{ font-size:11px; color:var(--bone-dim); margin-top:2px; }
 
-  .mg-cards{ display:grid; grid-template-columns:repeat(4, 1fr); gap:32px; margin-top:8px; }
+  .mg-cards{ display:grid; grid-template-columns:repeat(4, 1fr); gap:32px; margin-top:0; }
   @media (max-width:900px){ .mg-cards{ grid-template-columns:repeat(2, 1fr); } }
   .mg-card{
     background:var(--mg-panel); border:1px solid var(--hair); border-radius:8px; padding:16px 18px;
@@ -233,7 +235,9 @@
     font-size:12px; color:var(--bone-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
 
-  .mg-machine-row{ display:flex; justify-content:center; margin-top:28px; }
+  .mg-machine-row{ display:flex; justify-content:center; margin-top:6px; position:relative; z-index:2; }
+  .mg-feed-connectors-wrap{ position:relative; height:64px; max-width:1000px; margin:0 auto; }
+  .mg-feed-connectors{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
   .mg-machine{ display:flex; align-items:center; gap:16px; background:var(--mg-panel); border:1px solid var(--hair); border-radius:8px; padding:14px 22px; }
   .mg-machine-lbl{ font-family:'Big Shoulders Display', sans-serif; font-size:13px; text-transform:uppercase; }
   .mg-machine-state{ font-size:11px; color:var(--bone-dim); font-family:'IBM Plex Mono', monospace; }
@@ -244,7 +248,7 @@
   .mg-toggle input:checked + .mg-toggle-slider{ background:var(--mg-turquoise); }
   .mg-toggle input:checked + .mg-toggle-slider::before{ transform:translateX(18px); }
 
-  .mg-list-section{ margin-top:36px; }
+  .mg-list-section{ margin-top:64px; }
   .mg-list{ display:flex; flex-direction:column; gap:1px; background:var(--hair); border:1px solid var(--hair); }
   .mg-list-row{ background:var(--void); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; cursor:pointer; }
   .mg-list-row:hover{ background:var(--void-2); }
@@ -396,6 +400,15 @@
         <div class="mg-feed-box" id="mg-feed-forge">—</div>
         <div class="mg-feed-box" id="mg-feed-live">—</div>
         <div class="mg-feed-box" id="mg-feed-dispatch">—</div>
+      </div>
+
+      <div class="mg-feed-connectors-wrap">
+        <svg class="mg-feed-connectors" viewBox="0 0 1000 64" preserveAspectRatio="none">
+          <path d="M113,0 C113,30 420,50 500,64" class="mg-line mg-line-scout"/>
+          <path d="M371,0 C371,20 460,50 500,64" class="mg-line mg-line-forge"/>
+          <path d="M629,0 C629,20 540,50 500,64" class="mg-line mg-line-live"/>
+          <path d="M887,0 C887,30 580,50 500,64" class="mg-line mg-line-dispatch"/>
+        </svg>
       </div>
 
       <div class="mg-machine-row">
