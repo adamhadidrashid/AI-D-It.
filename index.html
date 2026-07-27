@@ -3,481 +3,1205 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI'D IT — Admin</title>
+<title>AI'D IT — Intelligence, Audited</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700;900&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --void:#07070a; --void-2:#0d0d12; --card:#111117;
-    --bone:#f2f4f7; --bone-dim:#a6adb8; --steel:#484e59;
-    --ember:#2ee6ff; --blood:#ff2e9a; --violet:#9d5cff;
+    --void:#07070a;
+    --void-2:#0d0d12;
+    --bone:#f2f4f7;
+    --bone-dim:#a6adb8;
+    --ember:#2ee6ff;
+    --ember-dim:#1b8fa3;
+    --blood:#ff2e9a;
+    --violet:#9d5cff;
+    --steel:#484e59;
     --hair:rgba(46,230,255,0.14);
+    --glow:#eef0f3;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{ background:var(--void); color:var(--bone); font-family:'IBM Plex Sans', sans-serif; min-height:100vh; }
-  .hidden{ display:none !important; }
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--void);
+    color:var(--bone);
+    font-family:'IBM Plex Sans', sans-serif;
+    overflow-x:hidden;
+    position:relative;
+  }
+  ::selection{ background:var(--ember); color:var(--void); }
+  a{color:inherit;}
+  :focus-visible{ outline:2px solid var(--ember); outline-offset:3px; }
 
-  /* ---- shared bits ---- */
+  /* scanline / grain overlay */
+  .scanlines{
+    position:fixed; inset:0; pointer-events:none; z-index:50;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.02) 0px,
+      rgba(255,255,255,0.02) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode:overlay;
+    opacity:0.5;
+  }
+  .vignette{
+    position:fixed; inset:0; pointer-events:none; z-index:49;
+    background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.65) 100%);
+  }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color:var(--ember);
+  }
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 5vw;
+    border-bottom:1px solid var(--hair);
+    backdrop-filter:blur(6px);
+    background:rgba(10,10,13,0.55);
+  }
+  .logotype{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+  }
+  .logotype span{ color:var(--ember); }
+  .nav-links{ display:flex; gap:34px; font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.08em; }
+  .nav-links a{ text-decoration:none; color:var(--bone-dim); transition:color .2s; }
+  .nav-links a:hover{ color:var(--bone); }
+  .admin-link{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.08em;
+    color:var(--bone-dim); text-decoration:none; opacity:0.85; transition:color .2s, opacity .2s;
+    white-space:nowrap;
+  }
+  .admin-link:hover{ color:var(--ember); opacity:1; }
+  @media (max-width:720px){ .nav-links{ display:none; } }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    padding:120px 6vw 80px;
+  }
+  #sphere-canvas{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(900px, 100vw); height:min(900px, 100vw);
+    z-index:0;
+    opacity:0.95;
+    filter:drop-shadow(0 0 24px rgba(46,230,255,0.35)) drop-shadow(0 0 60px rgba(157,92,255,0.18));
+  }
+  .hero-fade{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(1100px, 130vw); height:min(680px, 90vh);
+    z-index:1; pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(7,7,10,0.82) 0%, rgba(7,7,10,0.55) 45%, transparent 72%);
+  }
+  .hero-content{
+    position:relative; z-index:2; max-width:860px;
+    padding:0 20px; margin-top:70px;
+  }
+  .hero h1{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:900;
+    font-size:clamp(48px, 9vw, 108px);
+    line-height:0.94;
+    letter-spacing:-0.01em;
+    text-transform:uppercase;
+    position:relative;
+    color:var(--bone);
+    text-shadow:0 4px 20px rgba(0,0,0,0.9), 0 0 20px rgba(46,230,255,0.4), 0 0 50px rgba(46,230,255,0.2);
+  }
+  .hero h1 .glitch{ position:relative; display:inline-block; }
+  .hero h1 .glitch::before, .hero h1 .glitch::after{
+    content:attr(data-text);
+    position:absolute; left:0; top:0; width:100%;
+    overflow:hidden; opacity:0.7;
+  }
+  .hero h1 .glitch::before{ color:var(--blood); animation:glitchA 6s infinite; clip-path:inset(0 0 60% 0); }
+  .hero h1 .glitch::after{ color:var(--ember); animation:glitchB 6.5s infinite; clip-path:inset(60% 0 0 0); }
+  @keyframes glitchA{ 0%,92%,100%{ transform:translate(0,0); opacity:0;} 93%{ transform:translate(-3px,1px); opacity:.8;} 95%{ transform:translate(2px,-1px); opacity:.5;} }
+  @keyframes glitchB{ 0%,90%,100%{ transform:translate(0,0); opacity:0;} 91%{ transform:translate(3px,-1px); opacity:.7;} 94%{ transform:translate(-2px,1px); opacity:.4;} }
+
+  .hero p.lede{
+    margin-top:28px;
+    font-size:17px;
+    line-height:1.6;
+    color:var(--bone-dim);
+    max-width:560px;
+    margin-left:auto; margin-right:auto;
+  }
+  .hero-actions{
+    position:absolute; left:50%; bottom:64px; transform:translateX(-50%);
+    z-index:3; display:flex; gap:18px; justify-content:center; flex-wrap:wrap; width:100%; padding:0 6vw;
+  }
+
   .btn{
-    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
-    padding:12px 20px; border:1px solid var(--ember); color:var(--ember);
-    background:transparent; cursor:pointer; transition:all .2s;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px; letter-spacing:0.1em; text-transform:uppercase;
+    padding:16px 30px;
+    border:1px solid var(--bone);
+    background:transparent; color:var(--bone);
+    text-decoration:none; cursor:pointer;
+    transition:all .25s ease;
+    display:inline-block;
   }
-  .btn:hover{ background:var(--ember); color:var(--void); }
-  .btn.ghost{ border-color:var(--steel); color:var(--bone-dim); }
-  .btn.ghost:hover{ background:var(--steel); color:var(--bone); }
-  .field label{ display:block; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--bone-dim); margin-bottom:6px; }
-  .field input, .field select, .field textarea{
-    width:100%; background:transparent; border:1px solid var(--steel); color:var(--bone);
-    font-family:'IBM Plex Sans', sans-serif; font-size:14px; padding:10px 12px;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--ember); }
-  .center-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; position:relative; z-index:1; }
+  .btn:hover{ background:var(--bone); color:var(--void); }
+  .btn.primary{ border-color:var(--ember); color:var(--ember); }
+  .btn.primary:hover{ background:var(--ember); color:var(--void); }
 
-  .ambient-bg{
-    position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+  /* ---------- SECTION SHARED ---------- */
+  section{ padding:110px 6vw; position:relative; border-top:1px solid var(--hair); }
+  .section-head{ max-width:720px; margin-bottom:64px; }
+  .section-head h2{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:700;
+    font-size:clamp(32px, 4.5vw, 52px);
+    text-transform:uppercase;
+    margin-top:14px;
+    line-height:1.02;
   }
-  .ambient-bg::before, .ambient-bg::after{
-    content:''; position:absolute; border-radius:50%; filter:blur(60px);
-    animation:ambientDrift 14s ease-in-out infinite alternate;
-  }
-  .ambient-bg::before{
-    width:520px; height:520px; top:-120px; left:-100px;
-    background:radial-gradient(circle, rgba(46,230,255,0.16), transparent 70%);
-  }
-  .ambient-bg::after{
-    width:600px; height:600px; bottom:-160px; right:-140px;
-    background:radial-gradient(circle, rgba(157,92,255,0.14), transparent 70%);
-    animation-delay:-7s;
-  }
-  @keyframes ambientDrift{
-    0%{ transform:translate(0,0) scale(1); }
-    100%{ transform:translate(40px,30px) scale(1.12); }
-  }
+  .section-head p{ margin-top:18px; color:var(--bone-dim); font-size:16px; line-height:1.7; max-width:600px; }
 
-  .back-link{
-    position:fixed; top:22px; left:22px; z-index:50;
-    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
-    color:var(--ember); text-decoration:none; text-shadow:0 0 10px rgba(46,230,255,0.5);
-    display:flex; align-items:center; gap:6px;
+  /* ---------- MANIFESTO ---------- */
+  .manifesto{ max-width:900px; }
+  .manifesto p{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:400;
+    font-size:clamp(22px, 3vw, 34px);
+    line-height:1.35;
+    color:var(--bone-dim);
   }
-  .back-link:hover{ text-shadow:0 0 16px rgba(46,230,255,0.8); }
+  .manifesto p strong{ color:var(--bone); font-weight:600; }
+  .manifesto p em{ color:var(--ember); font-style:normal; }
+
+  /* ---------- SERVICES ACCORDION ---------- */
+  .accordion{ border-top:1px solid var(--hair); }
+  .acc-item{ border-bottom:1px solid var(--hair); }
+  .acc-trigger{
+    width:100%; display:flex; align-items:center; justify-content:space-between; gap:24px;
+    background:transparent; border:none; cursor:pointer;
+    padding:28px 6px; text-align:left; color:var(--bone);
+    transition:background .25s ease;
+  }
+  .acc-trigger:hover{ background:rgba(46,230,255,0.04); }
+  .acc-trigger .acc-left{ display:flex; align-items:baseline; gap:20px; }
+  .acc-trigger .tag{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.2em; color:var(--ember); text-transform:uppercase; min-width:170px; }
+  .acc-trigger h3{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:600; font-size:clamp(22px,3vw,30px); text-transform:uppercase; color:var(--bone);
+  }
+  .acc-icon{
+    font-family:'IBM Plex Mono', monospace; font-size:20px; color:var(--ember);
+    transition:transform .3s ease; flex-shrink:0;
+  }
+  .acc-item.open .acc-icon{ transform:rotate(45deg); }
+  .acc-panel{
+    max-height:0; overflow:hidden;
+    transition:max-height .4s ease;
+  }
+  .acc-panel-inner{ padding:0 6px 34px; display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:22px; }
+  .acc-panel p.intro{ grid-column:1/-1; color:var(--bone-dim); font-size:14px; line-height:1.7; max-width:640px; margin-bottom:4px; }
+  .breakdown-item{ border-left:1px solid var(--hair); padding-left:16px; }
+  .breakdown-item .b-title{ font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.05em; color:var(--bone); text-transform:uppercase; }
+  .breakdown-item p{ margin-top:8px; font-size:13.5px; line-height:1.6; color:var(--bone-dim); }
+
+  /* ---------- PROCESS ---------- */
+  .process{ display:grid; grid-template-columns:repeat(3, 1fr); gap:40px; }
+  @media (max-width:820px){ .process{ grid-template-columns:1fr; } }
+  .process-step{ border-left:1px solid var(--hair); padding-left:26px; }
+  .process-step .num{ font-family:'Big Shoulders Display', sans-serif; font-weight:900; font-size:56px; color:var(--ember-dim); line-height:1; }
+  .process-step h3{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:22px; margin-top:10px; }
+  .process-step p{ margin-top:10px; color:var(--bone-dim); font-size:14px; line-height:1.6; }
+
+  /* ---------- PROOF ---------- */
+  .proof-box{
+    border:1px dashed var(--steel);
+    padding:44px 36px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .proof-box .tag{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.2em; color:var(--blood); text-transform:uppercase; }
+  .proof-box h3{ font-family:'Big Shoulders Display', sans-serif; font-size:28px; text-transform:uppercase; }
+  .proof-box p{ color:var(--bone-dim); font-size:15px; line-height:1.7; max-width:640px; }
+
+  .proof-scroll{
+    max-height:420px;
+    overflow-y:auto;
+    border:1px solid var(--hair);
+    scrollbar-width:thin;
+    scrollbar-color:var(--ember) var(--void-2);
+  }
+  .proof-scroll::-webkit-scrollbar{ width:8px; }
+  .proof-scroll::-webkit-scrollbar-track{ background:var(--void-2); }
+  .proof-scroll::-webkit-scrollbar-thumb{ background:var(--ember); box-shadow:0 0 8px rgba(46,230,255,0.6); }
+  .proof-row{
+    padding:32px 36px;
+    border-bottom:1px solid var(--hair);
+    background:var(--void);
+  }
+  .proof-row:last-child{ border-bottom:none; }
+  .proof-row .tag{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.2em; color:var(--blood); text-transform:uppercase; }
+  .proof-row h3{ font-family:'Big Shoulders Display', sans-serif; font-size:26px; text-transform:uppercase; margin-top:10px; }
+  .proof-row p{ margin-top:10px; color:var(--bone-dim); font-size:15px; line-height:1.7; max-width:640px; }
+
+  /* ---------- CTA / CONTACT ---------- */
+  .cta{ text-align:center; padding:140px 6vw; }
+  .cta h2{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:900;
+    font-size:clamp(36px, 6vw, 64px); text-transform:uppercase; line-height:1;
+  }
+  .cta p{ margin-top:20px; color:var(--bone-dim); max-width:520px; margin-left:auto; margin-right:auto; }
+  .cta form{ margin-top:44px; display:flex; flex-direction:column; gap:16px; max-width:440px; margin-left:auto; margin-right:auto; }
+  .cta input, .cta textarea{
+    background:transparent; border:1px solid var(--steel); color:var(--bone);
+    font-family:'IBM Plex Sans', sans-serif; font-size:14px; padding:14px 16px;
+    width:100%;
+  }
+  .cta input:focus, .cta textarea:focus{ border-color:var(--ember); outline:none; }
+  .cta ::placeholder{ color:var(--steel); }
+
+  footer{
+    border-top:1px solid var(--hair);
+    padding:36px 6vw;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.05em; color:var(--steel);
+  }
 
   @media (prefers-reduced-motion: reduce){
-    .ambient-bg::before, .ambient-bg::after{ animation:none; }
+    *{ animation:none !important; transition:none !important; }
   }
-  .panel{ width:100%; max-width:380px; background:var(--void-2); border:1px solid var(--hair); padding:32px; display:flex; flex-direction:column; gap:16px; }
-  .panel h1{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:26px; }
-  .panel h1 span{ color:var(--ember); }
-  .panel p.sub{ color:var(--bone-dim); font-size:13px; line-height:1.6; margin-top:-8px; }
-  .error-msg{ color:var(--blood); font-size:12px; font-family:'IBM Plex Mono', monospace; }
 
-  /* ---- dashboard shell ---- */
-  #app-shell{ display:flex; min-height:100vh; }
-  .sidebar{
-    width:190px; flex-shrink:0; border-right:1px solid var(--hair);
-    background:var(--void-2); padding:22px 0; display:flex; flex-direction:column; gap:4px;
+  /* ---------- CHAT WIDGET ---------- */
+  #chat-fab{
+    position:fixed; bottom:26px; right:26px; z-index:200;
+    width:58px; height:58px; border-radius:50%;
+    background:var(--void-2); border:1px solid var(--ember);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 0 18px rgba(46,230,255,0.35);
+    transition:transform .2s ease;
   }
-  .sidebar .logotype{ font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:18px; text-transform:uppercase; padding:0 20px 20px; letter-spacing:0.02em; }
-  .sidebar .logotype span{ color:var(--ember); }
-  .tab-link{
-    display:block; padding:12px 20px; font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
-    color:var(--bone-dim); text-decoration:none; cursor:pointer; border-left:2px solid transparent;
-  }
-  .tab-link:hover{ color:var(--bone); }
-  .tab-link.active{ color:var(--ember); border-left-color:var(--ember); background:rgba(46,230,255,0.05); }
-  .tab-link.disabled{ color:var(--steel); cursor:default; }
-  .tab-link.disabled:hover{ color:var(--steel); }
+  #chat-fab:hover{ transform:scale(1.06); }
+  #chat-fab svg{ width:30px; height:30px; }
 
-  .main-col{ flex:1; display:flex; flex-direction:column; min-width:0; }
-  .topbar{
-    display:flex; justify-content:flex-end; align-items:center;
-    padding:16px 26px; border-bottom:1px solid var(--hair);
+  #chat-panel{
+    position:fixed; bottom:96px; right:26px; z-index:200;
+    width:min(360px, calc(100vw - 40px)); height:min(520px, calc(100vh - 140px));
+    background:var(--void-2); border:1px solid var(--hair);
+    display:none; flex-direction:column; overflow:hidden;
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
   }
-  .user-pill{
-    display:flex; align-items:center; gap:10px; position:relative; cursor:pointer;
-    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.05em; text-transform:uppercase;
+  #chat-panel.open{ display:flex; }
+  .chat-head{
+    padding:16px 18px; border-bottom:1px solid var(--hair);
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:16px;
   }
-  .user-pill .dot{ width:8px; height:8px; border-radius:50%; background:var(--ember); box-shadow:0 0 8px var(--ember); }
-  .user-menu{
-    position:absolute; top:calc(100% + 8px); right:0; background:var(--void-2); border:1px solid var(--hair);
-    min-width:140px; display:none; flex-direction:column; z-index:20;
+  .chat-head span.dot{ width:8px; height:8px; border-radius:50%; background:var(--ember); box-shadow:0 0 8px var(--ember); display:inline-block; margin-right:8px; }
+  .chat-close{ cursor:pointer; color:var(--bone-dim); font-family:'IBM Plex Mono', monospace; font-size:16px; background:none; border:none; }
+  .chat-close:hover{ color:var(--blood); }
+
+  .chat-body{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .chat-body::-webkit-scrollbar{ width:6px; }
+  .chat-body::-webkit-scrollbar-thumb{ background:var(--ember); }
+
+  .msg-bot{
+    background:var(--void); border:1px solid var(--hair); padding:10px 14px;
+    font-size:13.5px; line-height:1.55; color:var(--bone); max-width:88%;
+    align-self:flex-start;
   }
-  .user-menu.open{ display:flex; }
-  .user-menu button{
-    background:none; border:none; color:var(--bone-dim); text-align:left; padding:12px 16px;
-    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer;
+  .msg-user{
+    background:rgba(46,230,255,0.1); border:1px solid var(--hair); padding:10px 14px;
+    font-size:13.5px; line-height:1.55; color:var(--bone); max-width:88%;
+    align-self:flex-end;
   }
-  .user-menu button:hover{ color:var(--blood); }
+  .chat-btn-row{ display:flex; flex-wrap:wrap; gap:8px; align-self:flex-start; max-width:100%; }
+  .chat-btn{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.04em; text-transform:uppercase;
+    padding:9px 14px; border:1px solid var(--ember); color:var(--ember); background:transparent;
+    cursor:pointer; transition:all .2s;
+  }
+  .chat-btn:hover{ background:var(--ember); color:var(--void); }
+  .chat-btn.secondary{ border-color:var(--steel); color:var(--bone-dim); }
+  .chat-btn.secondary:hover{ background:var(--steel); color:var(--bone); }
+  .chat-link{ color:var(--ember); text-decoration:underline; cursor:pointer; background:none; border:none; font-size:13.5px; font-family:inherit; padding:0; }
 
-  .view{ padding:24px 26px; flex:1; }
+  .chat-form{
+    background:var(--void); border:1px solid var(--hair); padding:14px; display:flex; flex-direction:column; gap:10px;
+    align-self:stretch; max-width:100%;
+  }
+  .chat-form label{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); }
+  .chat-form input{
+    background:transparent; border:1px solid var(--steel); color:var(--bone);
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px; padding:8px 10px; width:100%;
+  }
+  .chat-form input:focus{ outline:none; border-color:var(--ember); }
 
-  /* ---- leads board (same as tracker, reused) ---- */
-  .board{ display:grid; grid-template-columns:repeat(5, minmax(200px, 1fr)); gap:14px; overflow-x:auto; }
-  @media (max-width:900px){ .board{ grid-template-columns:1fr; } }
-  .column{ background:var(--void-2); border:1px solid var(--hair); min-height:180px; display:flex; flex-direction:column; }
-  .column-head{ padding:14px 16px; border-bottom:1px solid var(--hair); display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; }
-  .column[data-stage="new"] .column-head{ color:var(--ember); }
-  .column[data-stage="contacted"] .column-head{ color:var(--violet); }
-  .column[data-stage="audit"] .column-head{ color:var(--blood); }
-  .column[data-stage="won"] .column-head{ color:#4ee08a; }
-  .column[data-stage="lost"] .column-head{ color:var(--steel); }
-  .cards{ flex:1; padding:10px; display:flex; flex-direction:column; gap:10px; min-height:60px; }
-  .cards.drag-over{ background:rgba(46,230,255,0.05); }
-  .card{ background:var(--card); border:1px solid var(--hair); padding:12px 14px; cursor:grab; transition:border-color .15s; }
-  .card:hover{ border-color:var(--ember); }
-  .card .biz{ font-family:'Big Shoulders Display', sans-serif; font-weight:600; font-size:16px; text-transform:uppercase; }
-  .card .meta{ font-size:12px; color:var(--bone-dim); margin-top:4px; }
-  .card .src{ display:inline-block; margin-top:8px; font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.08em; color:var(--steel); text-transform:uppercase; border:1px solid var(--steel); padding:2px 6px; }
-  .empty-hint{ padding:20px 12px; color:var(--steel); font-size:12px; text-align:center; }
+  .chat-input-row{ display:flex; border-top:1px solid var(--hair); }
+  .chat-input-row input{
+    flex:1; background:transparent; border:none; color:var(--bone); padding:14px 16px;
+    font-family:'IBM Plex Sans', sans-serif; font-size:13.5px;
+  }
+  .chat-input-row input:focus{ outline:none; }
+  .chat-input-row button{
+    background:none; border:none; color:var(--ember); padding:0 18px;
+    font-family:'IBM Plex Mono', monospace; font-size:12px; text-transform:uppercase; cursor:pointer;
+  }
+  @media (prefers-reduced-motion: reduce){
+    #chat-fab{ transition:none; }
+  }
 
-  .view-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
-  .view-head h2{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:24px; }
+  /* ---------- SCROLL REVEAL ---------- */
+  .reveal{
+    opacity:0;
+    clip-path:inset(0 100% 0 0);
+    filter:blur(9px) brightness(1.6) contrast(1.15);
+    transform:translateX(-24px);
+    transition:
+      opacity .45s ease,
+      clip-path 1.1s cubic-bezier(0.83,0,0.17,1),
+      filter .9s ease,
+      transform .9s cubic-bezier(0.83,0,0.17,1);
+    will-change:opacity, transform, filter, clip-path;
+  }
+  .reveal::after{
+    content:'';
+    position:absolute; top:0; bottom:0; left:0; width:3px;
+    background:linear-gradient(180deg, transparent, var(--ember) 20%, var(--violet) 50%, var(--blood) 80%, transparent);
+    opacity:0; pointer-events:none; z-index:5;
+    box-shadow:0 0 14px var(--ember), 0 0 28px var(--violet);
+  }
+  .reveal.in-view{
+    opacity:1;
+    clip-path:inset(0 0% 0 0);
+    filter:blur(0) brightness(1) contrast(1);
+    transform:translateX(0);
+  }
+  .reveal.in-view::after{
+    animation:scanSweep 1.1s cubic-bezier(0.83,0,0.17,1) forwards;
+  }
+  @keyframes scanSweep{
+    0%{ left:0; opacity:1; }
+    90%{ opacity:0.7; }
+    100%{ left:100%; opacity:0; }
+  }
+  .reveal.in-view .section-head h2,
+  .reveal.in-view .hero-content h1{
+    animation:headGlitch .4s steps(3) 1;
+  }
+  @keyframes headGlitch{
+    0%{ text-shadow:3px 0 var(--blood), -3px 0 var(--ember); transform:translateX(2px); }
+    35%{ text-shadow:-3px 0 var(--violet), 3px 0 var(--ember); transform:translateX(-2px); }
+    70%{ text-shadow:2px 0 var(--ember), -2px 0 var(--blood); transform:translateX(1px); }
+    100%{ text-shadow:none; transform:translateX(0); }
+  }
+  .reveal-sentinel{
+    position:absolute; top:0; left:0; width:1px; height:1px;
+    opacity:0; pointer-events:none;
+  }
 
-  .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; }
-  .modal-backdrop.open{ display:flex; }
-  .modal{ background:var(--void-2); border:1px solid var(--hair); width:100%; max-width:420px; padding:26px; display:flex; flex-direction:column; gap:14px; }
-  .modal h2{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:22px; }
-  .modal-actions{ display:flex; gap:10px; justify-content:space-between; margin-top:6px; }
-  .btn.danger{ border-color:var(--blood); color:var(--blood); }
-  .btn.danger:hover{ background:var(--blood); color:var(--void); }
+  /* ---------- PIXEL DISSOLVE PAGE-LOAD REVEAL ---------- */
+  #pixel-reveal{
+    position:fixed; inset:0; z-index:999; pointer-events:none;
+    display:grid;
+    grid-template-columns:repeat(28, 1fr);
+    grid-template-rows:repeat(18, 1fr);
+  }
+  #pixel-reveal div{
+    background:var(--void);
+    opacity:1;
+    transition:opacity .3s ease, background .3s ease;
+  }
+  #pixel-reveal div:nth-child(7n){ background:var(--void-2); }
+  #pixel-reveal.done{ display:none; }
+  @media (prefers-reduced-motion: reduce){
+    #pixel-reveal{ display:none; }
+  }
 </style>
 </head>
 <body>
 
-<div class="ambient-bg"></div>
-<a href="index.html" class="back-link">&larr; Back</a>
+<div id="pixel-reveal" aria-hidden="true"></div>
+<script>
+(function(){
+  var overlay = document.getElementById('pixel-reveal');
+  if(!overlay) return;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ overlay.style.display = 'none'; return; }
+  var cols = 28, rows = 18;
+  var total = cols * rows;
+  var frag = document.createDocumentFragment();
+  for(var i = 0; i < total; i++){
+    var d = document.createElement('div');
+    d.style.transitionDelay = (Math.random() * 0.55).toFixed(2) + 's';
+    frag.appendChild(d);
+  }
+  overlay.appendChild(frag);
+})();
+</script>
 
-<!-- STEP 1: Supabase connection setup (one-time, stored locally) -->
-<div id="setup-screen" class="center-screen">
-  <div class="panel">
-    <h1>AI<span>'D</span> IT — Setup</h1>
-    <p class="sub">Paste your Supabase project URL and anon key (Project Settings → API). Stored only in this browser.</p>
-    <div class="field"><label>Supabase URL</label><input type="text" id="setup-url" placeholder="https://xxxx.supabase.co"></div>
-    <div class="field"><label>Anon public key</label><input type="text" id="setup-key" placeholder="eyJhbGciOi..."></div>
-    <div class="error-msg" id="setup-error"></div>
-    <button class="btn" id="setup-save">Connect</button>
-  </div>
-</div>
+<div class="scanlines"></div>
+<div class="vignette"></div>
 
-<!-- STEP 2: Login -->
-<div id="login-screen" class="center-screen hidden">
-  <div class="panel">
-    <h1>AI<span>'D</span> IT — Login</h1>
-    <div class="field"><label>Email</label><input type="email" id="login-email"></div>
-    <div class="field"><label>Password</label><input type="password" id="login-password"></div>
-    <div class="error-msg" id="login-error"></div>
-    <button class="btn" id="login-submit">Log in</button>
-    <button class="btn ghost" id="reset-connection" style="margin-top:4px;">Change Supabase connection</button>
+<nav>
+  <div class="logotype">AI<span>'D</span> IT</div>
+  <div style="display:flex; align-items:center; gap:28px;">
+    <div class="nav-links">
+      <a href="#services">Services</a>
+      <a href="#process">Audit</a>
+      <a href="#proof">Proof</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <a href="admin.html" class="admin-link" title="Admin login">◆ Admin</a>
   </div>
-</div>
+</nav>
 
-<!-- STEP 3: Dashboard -->
-<div id="app-shell" class="hidden">
-  <div class="sidebar">
-    <div class="logotype">AI<span>'D</span> IT</div>
-    <a class="tab-link active" data-tab="leads">Leads</a>
-    <a class="tab-link disabled" title="Add more tabs later">+ More soon</a>
+<section class="hero">
+  <canvas id="sphere-canvas"></canvas>
+  <div class="hero-fade"></div>
+  <div class="hero-content">
+    <div class="eyebrow">Full-scope AI implementation</div>
+    <h1>
+      <span class="glitch" data-text="INTELLIGENCE,">INTELLIGENCE,</span><br>
+      AUDITED.
+    </h1>
+    <p class="lede">We don't sell you AI. We go through your business, find exactly where it's leaking time and money, then build the specific system that fixes it — chatbots, call handling, CRM, automation, or none of the above.</p>
   </div>
-  <div class="main-col">
-    <div class="topbar">
-      <div class="user-pill" id="user-pill">
-        <span class="dot"></span>
-        <span id="user-name">—</span>
-        <div class="user-menu" id="user-menu">
-          <button id="logout-btn">Log out</button>
+  <div class="hero-actions">
+    <a href="#contact" class="btn primary">Book an audit</a>
+    <a href="#services" class="btn">See what we build</a>
+  </div>
+  </section>
+
+<section class="manifesto-section reveal">
+  <div class="reveal-sentinel"></div>
+  <div class="manifesto">
+    <div class="eyebrow">The position</div>
+    <p style="margin-top:20px;">Most agencies show up with a <strong>menu</strong>. We show up with a <strong>diagnosis</strong>. Every business is already leaking hours somewhere — a phone that rings out after 6pm, a lead that goes cold overnight, a spreadsheet three people are quietly maintaining by hand. <em>We find that first. Then we build.</em></p>
+  </div>
+</section>
+
+<section id="services" class="reveal">
+  <div class="reveal-sentinel"></div>
+  <div class="section-head">
+    <div class="eyebrow">What we build</div>
+    <h2>Systems, not software</h2>
+    <p>Every engagement starts from the audit — this is the range of what tends to come out of it.</p>
+  </div>
+  <div class="accordion" id="services-accordion">
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">01 — Customer-Facing</span><h3>Call &amp; chat handling</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">For the hours you're not physically in the room to answer.</p>
+          <div class="breakdown-item"><div class="b-title">AI receptionist</div><p>Answers and routes calls after-hours or when the line's busy — takes a message or books a callback, doesn't pretend to be a person who isn't there.</p></div>
+          <div class="breakdown-item"><div class="b-title">Website chatbot</div><p>Handles FAQs, qualifies enquiries, and captures a lead's details before a human ever needs to jump in.</p></div>
+          <div class="breakdown-item"><div class="b-title">DM &amp; WhatsApp auto-response</div><p>Instant replies on Instagram/WhatsApp so an enquiry doesn't go cold waiting for someone to see it.</p></div>
+          <div class="breakdown-item"><div class="b-title">Voice booking</div><p>Phone-based booking for restaurants, salons, and trades — no app required from the customer.</p></div>
         </div>
       </div>
     </div>
-    <div class="view" id="view-leads">
-      <div class="view-head">
-        <h2>Leads</h2>
-        <button class="btn" id="add-lead-btn">+ Add Lead</button>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">02 — Outreach</span><h3>Sales &amp; pipeline</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">Getting in front of the right people without someone doing it by hand.</p>
+          <div class="breakdown-item"><div class="b-title">Automated cold outreach</div><p>Sourced leads, drafted messages, and scheduled sends running on autopilot instead of manual list-building.</p></div>
+          <div class="breakdown-item"><div class="b-title">Lead scoring</div><p>Flags which enquiries are actually worth calling first, instead of working the list in the order it arrived.</p></div>
+          <div class="breakdown-item"><div class="b-title">Follow-up sequences</div><p>Nothing goes cold because nobody remembered to chase it three days later.</p></div>
+          <div class="breakdown-item"><div class="b-title">Review &amp; reputation requests</div><p>Automatically asks happy customers for a review at the right moment, instead of never asking at all.</p></div>
+        </div>
       </div>
-      <div class="board" id="board">
-        <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
-        <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
-        <div class="column" data-stage="audit"><div class="column-head"><span>Audit Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
-        <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
-        <div class="column" data-stage="lost"><div class="column-head"><span>Lost</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
+    </div>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">03 — Operations</span><h3>Back-office automation</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">The admin quietly eating a few hours out of every week.</p>
+          <div class="breakdown-item"><div class="b-title">Scheduling &amp; reminders</div><p>Bookings and appointment reminders that send themselves, cutting no-shows.</p></div>
+          <div class="breakdown-item"><div class="b-title">Calendar integration</div><p>Bookings sync straight into Google/Outlook calendars automatically — no double-booking, no manual entry.</p></div>
+          <div class="breakdown-item"><div class="b-title">Invoicing &amp; expenses</div><p>Documents drafted and categorised automatically instead of manually each month.</p></div>
+          <div class="breakdown-item"><div class="b-title">Reporting</div><p>A weekly summary of what's actually happening in the business, pulled together automatically.</p></div>
+          <div class="breakdown-item"><div class="b-title">Document drafting</div><p>Quotes, proposals, and contracts generated from a template in minutes, not from a blank page.</p></div>
+        </div>
       </div>
+    </div>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">04 — Data</span><h3>CRM &amp; systems</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">So nothing about a customer sits only in someone's head or inbox.</p>
+          <div class="breakdown-item"><div class="b-title">CRM build</div><p>Built from scratch for businesses running on memory and spreadsheets today.</p></div>
+          <div class="breakdown-item"><div class="b-title">Data cleanup</div><p>Existing customer records tidied, de-duplicated, and made usable again.</p></div>
+          <div class="breakdown-item"><div class="b-title">Auto-tagging &amp; reminders</div><p>Leads and customers get flagged and followed up automatically, not by memory.</p></div>
+          <div class="breakdown-item"><div class="b-title">Segmentation</div><p>Groups customers so offers and messages actually land with the right people.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">05 — Presence</span><h3>Sites &amp; digital front doors</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">Built to convert a visitor, not just exist.</p>
+          <div class="breakdown-item"><div class="b-title">Website builds</div><p>Fast, focused sites built around one clear job for the visitor to do.</p></div>
+          <div class="breakdown-item"><div class="b-title">Landing pages</div><p>Built for a specific offer or campaign, so ad spend has somewhere sharp to land.</p></div>
+          <div class="breakdown-item"><div class="b-title">SEO content</div><p>Written to actually get found, not just to exist on the page.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">06 — Print &amp; Signage</span><h3>Bespoke signage &amp; printing</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">Physical presence, done properly — designed and produced to match the brand, not bolted on after.</p>
+          <div class="breakdown-item"><div class="b-title">Custom signage</div><p>Shopfronts, vehicle graphics, and outdoor signage designed and produced to spec.</p></div>
+          <div class="breakdown-item"><div class="b-title">Branded print</div><p>Business cards, stationery, and branded materials that actually match the rest of the identity.</p></div>
+          <div class="breakdown-item"><div class="b-title">Large format &amp; banners</div><p>Event banners, pull-ups, and large-format print for launches, sites, and pitches.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">07 — Marketing</span><h3>Digital presence, kept up</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">Not a one-off build — someone actually keeping the presence alive week to week.</p>
+          <div class="breakdown-item"><div class="b-title">Social media management</div><p>Regular posting and engagement kept consistent, even on the weeks you don't have time for it.</p></div>
+          <div class="breakdown-item"><div class="b-title">Ad campaign management</div><p>Paid social and search campaigns set up, watched, and adjusted for actual return, not just spend.</p></div>
+          <div class="breakdown-item"><div class="b-title">Content creation</div><p>Photos, graphics, and short-form video produced on an ongoing basis, not a one-time batch.</p></div>
+          <div class="breakdown-item"><div class="b-title">Presence audits</div><p>A regular check that the site, listings, and profiles are accurate, consistent, and actually working.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">08 — Loyalty</span><h3>Loyalty &amp; aftercare</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">It's cheaper to keep a customer than win a new one — this is how that actually happens.</p>
+          <div class="breakdown-item"><div class="b-title">Loyalty schemes</div><p>Points, rewards, or repeat-visit perks that bring customers back instead of one-and-done.</p></div>
+          <div class="breakdown-item"><div class="b-title">Referral schemes</div><p>Existing customers rewarded for bringing in new ones — growth that costs less than outreach.</p></div>
+          <div class="breakdown-item"><div class="b-title">Aftercare &amp; check-ins</div><p>Automatic follow-ups after a purchase or job so customers feel looked after, not forgotten.</p></div>
+          <div class="breakdown-item"><div class="b-title">Win-back</div><p>Automated re-engagement for customers who've gone quiet, before they're gone for good.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <button class="acc-trigger" aria-expanded="false">
+        <div class="acc-left"><span class="tag">09 — Bespoke</span><h3>Whatever the audit finds</h3></div>
+        <span class="acc-icon">+</span>
+      </button>
+      <div class="acc-panel">
+        <div class="acc-panel-inner">
+          <p class="intro">If it's not on this list but it's costing you time, that's still the job.</p>
+          <div class="breakdown-item"><div class="b-title">Custom builds</div><p>Whatever the audit turns up gets scoped and built specifically for how you actually work.</p></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="process" class="reveal">
+  <div class="reveal-sentinel"></div>
+  <div class="section-head">
+    <div class="eyebrow">How it runs</div>
+    <h2>Three steps. No lock-in.</h2>
+  </div>
+  <div class="process">
+    <div class="process-step">
+      <div class="num">01</div>
+      <h3>Audit</h3>
+      <p>We go through how the business actually runs, day to day, and flag where time and money are leaking.</p>
+    </div>
+    <div class="process-step">
+      <div class="num">02</div>
+      <h3>Build</h3>
+      <p>We build the two or three things worth building — not everything on the list, just what pays for itself.</p>
+    </div>
+    <div class="process-step">
+      <div class="num">03</div>
+      <h3>Run</h3>
+      <p>Handed over, or run on retainer if you'd rather it stayed our problem.</p>
     </div>
   </div>
-</div>
+</section>
 
-<div class="modal-backdrop" id="modal-backdrop">
-  <div class="modal">
-    <h2 id="modal-title">Add Lead</h2>
-    <div class="field"><label>Business name</label><input type="text" id="f-biz"></div>
-    <div class="field"><label>Contact name</label><input type="text" id="f-contact"></div>
-    <div class="field"><label>Phone / email</label><input type="text" id="f-phone"></div>
-    <div class="field"><label>Source</label>
-      <select id="f-source">
-        <option value="Cold approach">Cold approach</option>
-        <option value="Referral">Referral</option>
-        <option value="Network">Existing network</option>
-        <option value="Inbound">Inbound / site enquiry</option>
-      </select>
+<section id="proof" class="reveal">
+  <div class="reveal-sentinel"></div>
+  <div class="section-head">
+    <div class="eyebrow">Proof</div>
+    <h2>Built, not theoretical</h2>
+  </div>
+  <div class="stat-strip" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1px; background:var(--hair); border:1px solid var(--hair); margin-bottom:1px;">
+    <div style="background:var(--void); padding:30px 26px;">
+      <div style="font-family:'Big Shoulders Display', sans-serif; font-weight:900; font-size:clamp(34px,4vw,48px); color:var(--ember); text-shadow:0 0 22px rgba(46,230,255,0.35);">73+</div>
+      <div class="eyebrow" style="margin-top:8px; color:var(--bone-dim);">Chatbots built</div>
     </div>
-    <div class="field"><label>Notes</label><textarea id="f-notes" rows="3"></textarea></div>
-    <div class="modal-actions">
-      <button class="btn danger" id="delete-lead-btn" style="display:none;">Delete</button>
-      <div style="display:flex; gap:10px; margin-left:auto;">
-        <button class="btn ghost" id="cancel-btn">Cancel</button>
-        <button class="btn" id="save-lead-btn">Save</button>
-      </div>
+    <div style="background:var(--void); padding:30px 26px;">
+      <div style="font-family:'Big Shoulders Display', sans-serif; font-weight:900; font-size:clamp(34px,4vw,48px); color:var(--blood); text-shadow:0 0 22px rgba(255,46,154,0.3);">5,000+</div>
+      <div class="eyebrow" style="margin-top:8px; color:var(--bone-dim);">Websites hosted</div>
+    </div>
+    <div style="background:var(--void); padding:30px 26px;">
+      <div style="font-family:'Big Shoulders Display', sans-serif; font-weight:900; font-size:clamp(34px,4vw,48px); color:var(--violet); text-shadow:0 0 22px rgba(157,92,255,0.3);">15+</div>
+      <div class="eyebrow" style="margin-top:8px; color:var(--bone-dim);">Automated AI projects</div>
+    </div>
+    <div style="background:var(--void); padding:30px 26px;">
+      <div style="font-family:'Big Shoulders Display', sans-serif; font-weight:900; font-size:clamp(34px,4vw,48px); color:var(--blood); text-shadow:0 0 22px rgba(255,46,154,0.3);">£100k+</div>
+      <div class="eyebrow" style="margin-top:8px; color:var(--bone-dim);">Saved &amp; earned via AI</div>
+    </div>
+    <div style="background:var(--void); padding:30px 26px;">
+      <div style="font-family:'Big Shoulders Display', sans-serif; font-weight:900; font-size:clamp(34px,4vw,48px); color:var(--ember); text-shadow:0 0 22px rgba(46,230,255,0.35);">1,000+</div>
+      <div class="eyebrow" style="margin-top:8px; color:var(--bone-dim);">Hours saved &amp; missed calls recovered</div>
+    </div>
+    <div style="background:var(--void); padding:30px 26px;">
+      <div style="font-family:'Big Shoulders Display', sans-serif; font-weight:900; font-size:clamp(34px,4vw,48px); color:var(--ember); text-shadow:0 0 22px rgba(46,230,255,0.35);">13+</div>
+      <div class="eyebrow" style="margin-top:8px; color:var(--bone-dim);">CRMs developed</div>
     </div>
   </div>
-</div>
 
+  <div class="proof-scroll">
+    <div class="proof-row">
+      <div class="tag">Built &amp; running</div>
+      <h3>250,000 emails / week</h3>
+      <p>An autonomous outreach system we built and run ourselves — sourcing, personalising, and sending cold outreach at that volume without a human touching each one.</p>
+    </div>
+    <div class="proof-row">
+      <div class="tag">Built &amp; running</div>
+      <h3>Leads that pitch themselves</h3>
+      <p>Smaller agent systems that source their own leads and pitch the product directly — what reaches you afterwards is already warm, not a cold list to work through.</p>
+    </div>
+    <div class="proof-row">
+      <div class="tag">Built &amp; running</div>
+      <h3>AI appointment bookers</h3>
+      <p>Agents that book appointments themselves — no back-and-forth, no admin, the slot's just in the diary.</p>
+    </div>
+    <div class="proof-row">
+      <div class="tag">Built &amp; running</div>
+      <h3>After-hours receptionists</h3>
+      <p>Catch out-of-hours calls that would otherwise ring out — stopping leads from being lost the moment the office closes.</p>
+    </div>
+    <div class="proof-row">
+      <div class="tag">Built &amp; running</div>
+      <h3>25+ loyalty &amp; aftercare schemes</h3>
+      <p>Loyalty and aftercare systems built for clients — driving up repeat business and building a real bond between the business and its customers.</p>
+    </div>
+  </div>
+</section>
+
+<section id="efficiency" class="reveal">
+  <div class="reveal-sentinel"></div>
+  <div class="section-head">
+    <div class="eyebrow">The maths</div>
+    <h2>Less spent. More done.</h2>
+  </div>
+  <div class="manifesto" style="max-width:900px;">
+    <p>Some of what you're currently paying hundreds of thousands a year for can now be done with AI — for a fraction of the cost, in a fraction of the time. <strong>Less spent. More done.</strong></p>
+  </div>
+</section>
+
+<section class="cta reveal" id="contact">
+  <div class="reveal-sentinel"></div>
+  <div class="eyebrow">Start here</div>
+  <h2>Book the audit</h2>
+  <p>Tell us where it hurts. We'll tell you honestly whether AI is the answer — and if it isn't, we'll say so.</p>
+  <form onsubmit="event.preventDefault(); alert('Wire this up to your inbox / booking link.');">
+    <input type="text" placeholder="Name" required>
+    <input type="text" placeholder="Business" required>
+    <input type="email" placeholder="Email" required>
+    <textarea rows="3" placeholder="What's costing you the most time right now?"></textarea>
+    <button type="submit" class="btn primary" style="width:100%; border-radius:0;">Send</button>
+  </form>
+</section>
+
+<footer>
+  <div>AI'D IT LTD — Companies House No. [ pending ]</div>
+  <div>Slough, UK</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-const LS_URL = 'aidit_sb_url';
-const LS_KEY = 'aidit_sb_key';
-let sbClient = null;
-let currentUser = null;
-let leads = [];
-let editingId = null;
+try{
+(function(){
+  const canvas = document.getElementById('sphere-canvas');
+  const size = Math.min(900, window.innerWidth);
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
+  renderer.setSize(size, size);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-function show(id){ document.getElementById(id).classList.remove('hidden'); }
-function hide(id){ document.getElementById(id).classList.add('hidden'); }
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
+  camera.position.z = 7.6;
 
-function initSupabaseFromStorage(){
-  const url = localStorage.getItem(LS_URL);
-  const key = localStorage.getItem(LS_KEY);
-  if(url && key){
-    if(typeof window.supabase === 'undefined'){
-      throw new Error('Supabase library failed to load — check your internet connection or try disabling any ad-blocker/extension, then refresh.');
-    }
-    sbClient = window.supabase.createClient(url, key);
-    return true;
+  const group = new THREE.Group();
+  scene.add(group);
+
+  // Core wireframe sphere
+  const coreGeo = new THREE.IcosahedronGeometry(2, 3);
+  const coreWire = new THREE.WireframeGeometry(coreGeo);
+  const coreMat = new THREE.LineBasicMaterial({ color:0x2ee6ff, transparent:true, opacity:0.55 });
+  const core = new THREE.LineSegments(coreWire, coreMat);
+  group.add(core);
+
+  // Inner glow sphere
+  const glowGeo = new THREE.IcosahedronGeometry(1.92, 1);
+  const glowMat = new THREE.MeshBasicMaterial({ color:0x9d5cff, transparent:true, opacity:0.08 });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  group.add(glow);
+
+  // Outer orbit rings
+  function makeRing(radius, color, opacity, tilt){
+    const ringGeo = new THREE.TorusGeometry(radius, 0.004, 8, 128);
+    const ringMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = tilt;
+    return ring;
   }
-  return false;
-}
+  const ringA = makeRing(2.6, 0x2ee6ff, 0.6, Math.PI/2.4);
+  const ringB = makeRing(2.9, 0xff2e9a, 0.32, Math.PI/1.6);
+  const ringC = makeRing(3.2, 0x9d5cff, 0.4, Math.PI/3.1);
+  group.add(ringA, ringB, ringC);
 
-async function boot(){
-  try{
-    if(initSupabaseFromStorage()){
-      hide('setup-screen');
-      const { data, error } = await sbClient.auth.getSession();
-      if(error) throw error;
-      if(data.session){
-        currentUser = data.session.user;
-        enterDashboard();
-      } else {
-        show('login-screen');
-      }
-    } else {
-      show('setup-screen');
-    }
-  }catch(err){
-    console.error('Connection failed:', err);
-    hide('login-screen');
-    hide('app-shell');
-    show('setup-screen');
-    document.getElementById('setup-error').textContent = 'Connection failed: ' + (err.message || err);
+  // Particle dust
+  const particleCount = 260;
+  const positions = new Float32Array(particleCount * 3);
+  for(let i=0;i<particleCount;i++){
+    const r = 3.0 + Math.random()*1.1;
+    const theta = Math.random()*Math.PI*2;
+    const phi = Math.acos((Math.random()*2)-1);
+    positions[i*3] = r*Math.sin(phi)*Math.cos(theta);
+    positions[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+    positions[i*3+2] = r*Math.cos(phi);
   }
-}
+  const particleGeo = new THREE.BufferGeometry();
+  particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const particleMat = new THREE.PointsMaterial({ color:0x2ee6ff, size:0.022, transparent:true, opacity:0.55 });
+  const particles = new THREE.Points(particleGeo, particleMat);
+  group.add(particles);
 
-document.getElementById('setup-save').addEventListener('click', () => {
-  const url = document.getElementById('setup-url').value.trim();
-  const key = document.getElementById('setup-key').value.trim();
-  document.getElementById('setup-error').textContent = '';
-  if(!url || !key){
-    document.getElementById('setup-error').textContent = 'Both fields are required.';
-    return;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Neon color-cycle palette: pink -> orange -> dark blue -> yellow -> loop
+  const palette = [0xff2e9a, 0xff7a1a, 0x1a3aff, 0xf5ff2e].map(c => new THREE.Color(c));
+  const _cycleColor = new THREE.Color();
+  function colorAt(tSeconds, phaseOffset){
+    const t = tSeconds + (phaseOffset || 0);
+    const n = palette.length;
+    const idx = Math.floor(t) % n;
+    const next = (idx + 1) % n;
+    const frac = t - Math.floor(t);
+    _cycleColor.copy(palette[idx]).lerp(palette[next], frac);
+    return _cycleColor;
   }
-  localStorage.setItem(LS_URL, url);
-  localStorage.setItem(LS_KEY, key);
-  boot();
-});
+  const cycleSpeed = 0.34; // lower = slower phase through the palette
 
-document.getElementById('reset-connection').addEventListener('click', () => {
-  localStorage.removeItem(LS_URL);
-  localStorage.removeItem(LS_KEY);
-  hide('login-screen');
-  show('setup-screen');
-});
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!reduceMotion){
+      core.rotation.y += 0.0016;
+      core.rotation.x += 0.0006;
+      glow.rotation.y -= 0.001;
+      ringA.rotation.z += 0.0022;
+      ringB.rotation.z -= 0.0014;
+      ringC.rotation.z += 0.0009;
+      particles.rotation.y += 0.0008;
 
-document.getElementById('login-submit').addEventListener('click', async () => {
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  try{
-    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
-    if(error){
-      errEl.textContent = error.message;
-      return;
+      const t = performance.now() / 1000 * cycleSpeed;
+      core.material.color.copy(colorAt(t));
+      glow.material.color.copy(colorAt(t, 0.5));
+      particles.material.color.copy(colorAt(t, 0.2));
+      ringA.material.color.copy(colorAt(t, 0.3));
+      ringB.material.color.copy(colorAt(t, 0.6));
+      ringC.material.color.copy(colorAt(t, 0.9));
     }
-    currentUser = data.user;
-    hide('login-screen');
-    enterDashboard();
-  }catch(err){
-    console.error('Login failed:', err);
-    errEl.textContent = 'Something went wrong: ' + (err.message || err);
+    renderer.render(scene, camera);
   }
-});
+  animate();
 
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  await sbClient.auth.signOut();
-  currentUser = null;
-  hide('app-shell');
-  show('login-screen');
-});
+  window.addEventListener('resize', () => {
+    const s = Math.min(900, window.innerWidth);
+    renderer.setSize(s, s);
+  });
+})();
+}catch(err){ console.error('Sphere init failed:', err); }
 
-document.getElementById('user-pill').addEventListener('click', (e) => {
-  document.getElementById('user-menu').classList.toggle('open');
-  e.stopPropagation();
-});
-document.addEventListener('click', () => document.getElementById('user-menu').classList.remove('open'));
-
-function displayName(user){
-  const meta = user.user_metadata || {};
-  if(meta.full_name) return meta.full_name;
-  if(meta.name) return meta.name;
-  return (user.email || '').split('@')[0];
-}
-
-async function enterDashboard(){
-  document.getElementById('user-name').textContent = displayName(currentUser);
-  show('app-shell');
-  document.getElementById('app-shell').style.display = 'flex';
-  await loadLeads();
-  render();
-}
-
-// ---- Leads (Supabase-backed) ----
-async function loadLeads(){
-  const { data, error } = await sbClient.from('leads').select('*').order('created_at', { ascending:true });
-  if(error){ console.error(error); leads = []; return; }
-  leads = data.map(row => ({
-    id: row.id, biz: row.biz, contact: row.contact, phone: row.phone,
-    source: row.source, notes: row.notes, stage: row.stage
-  }));
-}
-
-function escapeHtml(str){
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
-}
-
-function render(){
-  document.querySelectorAll('.cards').forEach(col => col.innerHTML = '');
-  const stages = ['new','contacted','audit','won','lost'];
-  stages.forEach(stage => {
-    const items = leads.filter(l => l.stage === stage);
-    const col = document.querySelector('.cards[data-stage="'+stage+'"]');
-    document.querySelector('.column[data-stage="'+stage+'"] .count').textContent = items.length;
-    if(items.length === 0){
-      const hint = document.createElement('div');
-      hint.className = 'empty-hint';
-      hint.textContent = 'No leads here';
-      col.appendChild(hint);
-      return;
-    }
-    items.forEach(lead => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.draggable = true;
-      card.dataset.id = lead.id;
-      card.innerHTML =
-        '<div class="biz">' + escapeHtml(lead.biz) + '</div>' +
-        (lead.contact ? '<div class="meta">' + escapeHtml(lead.contact) + '</div>' : '') +
-        (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
-        '<span class="src">' + escapeHtml(lead.source || '') + '</span>';
-      card.addEventListener('click', () => openModal(lead.id));
-      card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', lead.id));
-      col.appendChild(card);
+// Services accordion
+try{
+document.querySelectorAll('#services-accordion .acc-item').forEach(item => {
+  const trigger = item.querySelector('.acc-trigger');
+  const panel = item.querySelector('.acc-panel');
+  trigger.addEventListener('click', () => {
+    const isOpen = item.classList.contains('open');
+    // close all
+    document.querySelectorAll('#services-accordion .acc-item').forEach(other => {
+      other.classList.remove('open');
+      other.querySelector('.acc-trigger').setAttribute('aria-expanded', 'false');
+      other.querySelector('.acc-panel').style.maxHeight = null;
     });
-  });
-}
-
-document.querySelectorAll('.cards').forEach(col => {
-  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
-  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
-  col.addEventListener('drop', async e => {
-    e.preventDefault();
-    col.classList.remove('drag-over');
-    const id = e.dataTransfer.getData('text/plain');
-    const lead = leads.find(l => l.id === id);
-    if(lead){
-      lead.stage = col.dataset.stage;
-      await sbClient.from('leads').update({ stage: lead.stage }).eq('id', id);
-      render();
+    if(!isOpen){
+      item.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      panel.style.maxHeight = panel.scrollHeight + 'px';
     }
   });
 });
+}catch(err){ console.error('Accordion init failed:', err); }
 
-function openModal(id){
-  const deleteBtn = document.getElementById('delete-lead-btn');
-  if(id){
-    editingId = id;
-    const lead = leads.find(l => l.id === id);
-    document.getElementById('modal-title').textContent = 'Edit Lead';
-    document.getElementById('f-biz').value = lead.biz || '';
-    document.getElementById('f-contact').value = lead.contact || '';
-    document.getElementById('f-phone').value = lead.phone || '';
-    document.getElementById('f-source').value = lead.source || 'Cold approach';
-    document.getElementById('f-notes').value = lead.notes || '';
-    deleteBtn.style.display = 'inline-block';
-  } else {
-    editingId = null;
-    document.getElementById('modal-title').textContent = 'Add Lead';
-    document.getElementById('f-biz').value = '';
-    document.getElementById('f-contact').value = '';
-    document.getElementById('f-phone').value = '';
-    document.getElementById('f-source').value = 'Cold approach';
-    document.getElementById('f-notes').value = '';
-    deleteBtn.style.display = 'none';
-  }
-  document.getElementById('modal-backdrop').classList.add('open');
-}
-function closeModal(){
-  document.getElementById('modal-backdrop').classList.remove('open');
-  editingId = null;
-}
-
-document.getElementById('add-lead-btn').addEventListener('click', () => openModal(null));
-document.getElementById('cancel-btn').addEventListener('click', closeModal);
-document.getElementById('modal-backdrop').addEventListener('click', e => {
-  if(e.target.id === 'modal-backdrop') closeModal();
-});
-
-document.getElementById('save-lead-btn').addEventListener('click', async () => {
-  const biz = document.getElementById('f-biz').value.trim();
-  if(!biz){ document.getElementById('f-biz').focus(); return; }
-  const data = {
-    biz,
-    contact: document.getElementById('f-contact').value.trim(),
-    phone: document.getElementById('f-phone').value.trim(),
-    source: document.getElementById('f-source').value,
-    notes: document.getElementById('f-notes').value.trim()
-  };
-  if(editingId){
-    await sbClient.from('leads').update(data).eq('id', editingId);
-    Object.assign(leads.find(l => l.id === editingId), data);
-  } else {
-    const { data: inserted, error } = await sbClient.from('leads').insert({ ...data, stage:'new' }).select().single();
-    if(!error){
-      leads.push({ id: inserted.id, stage:'new', ...data });
+// Scroll-triggered section reveals
+// Using a direct getBoundingClientRect check on scroll (rAF-throttled) rather
+// than IntersectionObserver — IntersectionObserver schedules its callback
+// asynchronously and can lag behind a continuously-rendering WebGL scene,
+// which is what caused the "scroll down does nothing, scroll up then down
+// works" bug. Checking rects directly inside a scroll-driven rAF callback
+// keeps this on the same clock as everything else that already updates
+// smoothly (like the sphere's rotation).
+function checkReveals(){
+  document.querySelectorAll('.reveal:not(.in-view)').forEach(section => {
+    const rect = section.getBoundingClientRect();
+    if(rect.top < window.innerHeight * 0.88){
+      section.classList.add('in-view');
     }
+  });
+}
+let revealTicking = false;
+window.addEventListener('scroll', () => {
+  if(!revealTicking){
+    revealTicking = true;
+    requestAnimationFrame(() => { checkReveals(); revealTicking = false; });
   }
-  render();
-  closeModal();
+}, { passive:true });
+checkReveals();
+
+// Safety net: force-reveal anything still hidden after a few seconds,
+// in case scroll/rAF checks somehow never catch a section.
+setTimeout(() => {
+  document.querySelectorAll('.reveal:not(.in-view)').forEach(el => el.classList.add('in-view'));
+}, 4000);
+
+// Pixel dissolve page-load reveal
+window.addEventListener('load', () => {
+  const overlay = document.getElementById('pixel-reveal');
+  if(!overlay) return;
+  overlay.querySelectorAll('div').forEach(d => { d.style.opacity = '0'; });
+  setTimeout(() => overlay.classList.add('done'), 950);
+});
+</script>
+
+<!-- Chat widget -->
+<div id="chat-fab" role="button" aria-label="Open chat" tabindex="0">
+  <svg viewBox="0 0 48 48" fill="none">
+    <rect x="10" y="16" width="28" height="20" rx="6" stroke="#2ee6ff" stroke-width="2"/>
+    <rect x="20" y="6" width="8" height="10" rx="3" stroke="#2ee6ff" stroke-width="2"/>
+    <circle cx="24" cy="8" r="2" fill="#2ee6ff"/>
+    <circle cx="18" cy="26" r="3" fill="#2ee6ff"/>
+    <circle cx="30" cy="26" r="3" fill="#2ee6ff"/>
+    <path d="M18 32h12" stroke="#2ee6ff" stroke-width="2" stroke-linecap="round"/>
+    <path d="M4 24h6M38 24h6" stroke="#2ee6ff" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<div id="chat-panel">
+  <div class="chat-head">
+    <div><span class="dot"></span>AI'D IT ASSISTANT</div>
+    <button class="chat-close" id="chat-close" aria-label="Close chat">✕</button>
+  </div>
+  <div class="chat-body" id="chat-body"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chat-text-input" placeholder="Type a message...">
+    <button id="chat-text-send">Send</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+try{
+/* ===== CONFIG =====
+   Fill in the same Supabase project URL + anon key used for admin.html.
+   The anon key is safe to expose publicly — it only allows what the
+   RLS policies permit (public insert into leads, nothing else). */
+const CHAT_SUPABASE_URL = 'https://vkxjtzqvyxftizvmyrkn.supabase.co';
+const CHAT_SUPABASE_ANON_KEY = 'sb_publishable_5VBsCwcISlbQt5uOvokVcw_PBkxFy8e';
+const chatSupabase = (CHAT_SUPABASE_URL.startsWith('http'))
+  ? window.supabase.createClient(CHAT_SUPABASE_URL, CHAT_SUPABASE_ANON_KEY)
+  : null;
+
+const SERVICES = [
+  { key:'customer', title:'Call & chat handling', detail:"AI receptionists that answer after-hours or overflow calls, website chatbots that qualify enquiries, DM auto-response on Instagram/WhatsApp, and phone-based booking. Small businesses miss around 62% of incoming calls on average, and 85% of people who reach voicemail never call back — most of that is recoverable with something answering instantly, day or night." },
+  { key:'outreach', title:'Sales & pipeline', detail:"Automated cold outreach that sources and messages leads on autopilot, lead scoring so the most promising enquiries get worked first, follow-up sequences that don't rely on someone remembering, and automatic review requests at the right moment." },
+  { key:'ops', title:'Back-office automation', detail:"Scheduling and reminders that cut no-shows, invoices and expenses categorised automatically, a weekly report pulled together without anyone compiling it by hand, and quotes or contracts drafted from a template in minutes." },
+  { key:'crm', title:'CRM & systems', detail:"A CRM built from scratch for businesses still running on memory and spreadsheets, existing records cleaned and de-duplicated, automatic tagging and follow-up reminders, and customers segmented so offers actually land with the right people." },
+  { key:'presence', title:'Sites & digital front doors', detail:"Fast, focused websites built around one clear job for the visitor, landing pages built for a specific offer so ad spend has somewhere sharp to land, and content written to actually get found." },
+  { key:'signage', title:'Bespoke signage & printing', detail:"Shopfront and vehicle graphics, branded stationery and print that actually matches the rest of the identity, and large-format banners and pull-ups for events, sites, and pitches." },
+  { key:'marketing', title:'Marketing & digital presence', detail:"Ongoing social media management so posting stays consistent even on busy weeks, paid ad campaigns set up and adjusted for real return, regular photo/video content, and a periodic check that your listings and profiles are accurate." },
+  { key:'loyalty', title:'Loyalty & aftercare', detail:"Loyalty and referral schemes that bring customers back and reward them for bringing others, automatic aftercare check-ins after a purchase or job, and win-back messages for customers who've gone quiet. A 5% improvement in customer retention has been shown to lift profits by 25-95% (Bain & Company) — this is usually the highest-return thing on the whole list." },
+  { key:'bespoke', title:'Whatever the audit finds', detail:"If it's not on this list but it's costing you time or money, that's still the job — scoped and built specifically for how the business actually works." }
+];
+
+let leadInfo = { name:'', biz:'', email:'', phone:'' };
+let capturedLead = false;
+let currentServiceKey = null;
+
+const chatBody = document.getElementById('chat-body');
+const fab = document.getElementById('chat-fab');
+const panel = document.getElementById('chat-panel');
+const closeBtn = document.getElementById('chat-close');
+const textInput = document.getElementById('chat-text-input');
+const textSend = document.getElementById('chat-text-send');
+
+function openChat(){
+  panel.classList.add('open');
+  if(chatBody.children.length === 0){
+    botMessage("Hey — thanks for reaching out to AI'D It's assistant. I'm here to help you get a quick picture of what we do and how we could help your business.");
+    setTimeout(showCaptureForm, 400);
+  }
+}
+fab.addEventListener('click', openChat);
+fab.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') openChat(); });
+closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+function scrollToBottom(){ chatBody.scrollTop = chatBody.scrollHeight; }
+
+function botMessage(text){
+  const el = document.createElement('div');
+  el.className = 'msg-bot';
+  el.textContent = text;
+  chatBody.appendChild(el);
+  scrollToBottom();
+}
+function userMessage(text){
+  const el = document.createElement('div');
+  el.className = 'msg-user';
+  el.textContent = text;
+  chatBody.appendChild(el);
+  scrollToBottom();
+}
+function buttonRow(options){
+  const row = document.createElement('div');
+  row.className = 'chat-btn-row';
+  options.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'chat-btn' + (opt.secondary ? ' secondary' : '');
+    b.textContent = opt.label;
+    b.addEventListener('click', () => {
+      row.remove();
+      userMessage(opt.label);
+      opt.action();
+    });
+    row.appendChild(b);
+  });
+  chatBody.appendChild(row);
+  scrollToBottom();
+}
+
+async function saveLead(extraNote){
+  if(!chatSupabase){ console.warn('Supabase not configured for chat widget.'); return; }
+  try{
+    await chatSupabase.from('leads').insert({
+      biz: leadInfo.biz,
+      contact: leadInfo.name,
+      phone: leadInfo.phone,
+      source: 'Chatbot',
+      notes: extraNote || '',
+      stage: 'new'
+    });
+  }catch(err){ console.error('Lead save failed:', err); }
+}
+
+function showCaptureForm(){
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-form';
+  wrap.innerHTML =
+    '<label>So we know who we\'re speaking to — could you pop in a few details below?</label>' +
+    '<input type="text" id="cf-name" placeholder="Your name">' +
+    '<input type="text" id="cf-biz" placeholder="Business name">' +
+    '<input type="email" id="cf-email" placeholder="Email">' +
+    '<input type="text" id="cf-phone" placeholder="Phone (optional) *">' +
+    '<button class="chat-btn" id="cf-submit">Continue</button>';
+  chatBody.appendChild(wrap);
+  scrollToBottom();
+
+  document.getElementById('cf-submit').addEventListener('click', () => {
+    const name = document.getElementById('cf-name').value.trim();
+    const biz = document.getElementById('cf-biz').value.trim();
+    const email = document.getElementById('cf-email').value.trim();
+    const phone = document.getElementById('cf-phone').value.trim();
+
+    if(!name || !biz || !email){
+      const warn = document.createElement('div');
+      warn.className = 'msg-bot';
+      const skipBtn = document.createElement('button');
+      skipBtn.className = 'chat-link';
+      skipBtn.textContent = 'skip for now';
+      skipBtn.addEventListener('click', () => {
+        warn.remove();
+        wrap.remove();
+        userMessage('Skip for now');
+        showMainMenu();
+      });
+      warn.textContent = "You're missing a few details — try again, or ";
+      warn.appendChild(skipBtn);
+      chatBody.appendChild(warn);
+      scrollToBottom();
+      return;
+    }
+
+    leadInfo = { name, biz, email, phone };
+    capturedLead = true;
+    wrap.remove();
+    userMessage(`${name} — ${biz}`);
+    saveLead();
+    showMainMenu();
+  });
+}
+
+function showMainMenu(){
+  botMessage("What would you like to look at?");
+  buttonRow([
+    { label:'What we build', action: showServicesList },
+    { label:'Cost', action: showCost },
+    { label:'Book audit', action: showConfirmForm.bind(null, 'audit') },
+    { label:'Something else', action: showSomethingElse }
+  ]);
+}
+
+function showCost(){
+  botMessage("Cost varies from business to business — everything you need is packaged, and we offer a range of payment options too.");
+  buttonRow([
+    { label:'Request a call from a senior consultant', action: showConfirmForm.bind(null, 'call') },
+    { label:'Return to main menu', secondary:true, action: showMainMenu }
+  ]);
+}
+
+function showServicesList(){
+  botMessage("Here's everything we build — pick one for more detail:");
+  buttonRow(SERVICES.map(s => ({
+    label: s.title,
+    action: () => showServiceDetail(s.key)
+  })));
+}
+
+function showServiceDetail(key){
+  const service = SERVICES.find(s => s.key === key);
+  currentServiceKey = key;
+  botMessage(service.detail);
+  buttonRow([
+    { label:'Back to list', secondary:true, action: showServicesList },
+    { label:'Request a call', action: showConfirmForm.bind(null, 'call') },
+    { label:'Book an audit', action: showConfirmForm.bind(null, 'audit') }
+  ]);
+}
+
+function showConfirmForm(kind){
+  const isAudit = kind === 'audit';
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-form';
+  wrap.innerHTML =
+    '<label>' + (capturedLead ? 'Just confirm your details:' : "So we know who we're speaking to:") + '</label>' +
+    '<input type="text" id="cc-name" placeholder="Your name" value="' + (leadInfo.name || '') + '">' +
+    '<input type="text" id="cc-biz" placeholder="Business name" value="' + (leadInfo.biz || '') + '">' +
+    '<input type="email" id="cc-email" placeholder="Email" value="' + (leadInfo.email || '') + '">' +
+    '<input type="text" id="cc-phone" placeholder="Phone (optional) *" value="' + (leadInfo.phone || '') + '">' +
+    '<button class="chat-btn" id="cc-submit">' + (isAudit ? 'Confirm audit booking' : 'Confirm call request') + '</button>';
+  chatBody.appendChild(wrap);
+  scrollToBottom();
+
+  document.getElementById('cc-submit').addEventListener('click', () => {
+    const name = document.getElementById('cc-name').value.trim();
+    const biz = document.getElementById('cc-biz').value.trim();
+    const email = document.getElementById('cc-email').value.trim();
+    const phone = document.getElementById('cc-phone').value.trim();
+    if(!name || !biz || !email) return;
+
+    leadInfo = { name, biz, email, phone };
+    capturedLead = true;
+    wrap.remove();
+    userMessage('Confirmed');
+    const note = isAudit
+      ? 'Requested: audit booking' + (currentServiceKey ? ` (via ${currentServiceKey})` : '')
+      : 'Requested: call from a senior consultant' + (currentServiceKey ? ` (via ${currentServiceKey})` : '');
+    saveLead(note);
+    botMessage(isAudit
+      ? "You're booked — someone will follow up shortly."
+      : "Logged — a senior consultant will give you a call shortly.");
+    buttonRow([{ label:'Return to main menu', secondary:true, action: showMainMenu }]);
+  });
+}
+
+function showSomethingElse(){
+  botMessage("Type your question below and I'll pass it straight on.");
+}
+
+function handleFreeText(text){
+  userMessage(text);
+  const lower = text.toLowerCase();
+  if(/(price|cost|pricing|payment)/.test(lower)){
+    showCost();
+  } else if(/(audit|book)/.test(lower)){
+    showConfirmForm('audit');
+  } else if(/(chatbot|website|service|crm|loyalty|signage|print|marketing|receptionist)/.test(lower)){
+    showServicesList();
+  } else if(!capturedLead){
+    botMessage("Not sure I've got that one — let me grab your details and a real person will follow up.");
+    showCaptureForm();
+  } else {
+    saveLead('Message: ' + text);
+    botMessage("Thanks — that's been logged and someone will get back to you.");
+    buttonRow([{ label:'Return to main menu', secondary:true, action: showMainMenu }]);
+  }
+}
+
+textSend.addEventListener('click', () => {
+  const val = textInput.value.trim();
+  if(!val) return;
+  textInput.value = '';
+  handleFreeText(val);
+});
+textInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ textSend.click(); }
 });
 
-document.getElementById('delete-lead-btn').addEventListener('click', async () => {
-  if(editingId){
-    await sbClient.from('leads').delete().eq('id', editingId);
-    leads = leads.filter(l => l.id !== editingId);
-    render();
-    closeModal();
-  }
-});
-
-boot();
+}catch(err){ console.error('Chat widget init failed:', err); }
 </script>
 
 </body>
