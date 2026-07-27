@@ -177,6 +177,27 @@
     .mg-agent-core, .mg-agent-orbit{ animation:none; }
   }
 
+  /* ---------- Sphere agent beneath the columns, centred, machine-on only ---------- */
+  .mg-orb-wrap{ display:flex; flex-direction:column; align-items:center; width:fit-content; margin:0 auto; }
+  .mg-orb-line{
+    width:3px; height:36px;
+    background:linear-gradient(180deg, var(--mg-turquoise), rgba(62,217,201,0.15));
+    box-shadow:0 0 6px var(--mg-turquoise);
+  }
+  .mg-orb{
+    width:22px; height:22px; border-radius:50%; margin-top:-1px;
+    background:radial-gradient(circle at 35% 35%, #ffffff, var(--mg-turquoise) 55%, var(--mg-sapphire) 100%);
+    box-shadow:0 0 14px var(--mg-turquoise), 0 0 30px rgba(62,217,201,0.4);
+    animation:mgOrbPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes mgOrbPulse{
+    0%,100%{ transform:scale(1); opacity:1; }
+    50%{ transform:scale(0.82); opacity:0.7; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .mg-orb{ animation:none; }
+  }
+
   /* ---------- Mini GALAXY map view (its own visual identity) ---------- */
   :root{
     --mg-sapphire:#4E8FE0; --mg-sapphire-dim:rgba(78,143,224,0.15);
@@ -379,6 +400,10 @@
         <div class="column" data-stage="audit"><div class="column-head"><span>Audit Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Lost</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
+      </div>
+      <div class="mg-orb-wrap" id="mg-orb-wrap" style="display:none;">
+        <div class="mg-orb-line"></div>
+        <div class="mg-orb"></div>
       </div>
     </div>
 
@@ -660,6 +685,7 @@ function applyMachineUI(on){
   document.getElementById('mg-machine-state').textContent = on ? 'On' : 'Off';
   document.querySelector('.mg-scale').classList.toggle('mg-off', !on);
   document.getElementById('mg-agent-wrap').style.display = on ? 'flex' : 'none';
+  document.getElementById('mg-orb-wrap').style.display = on ? 'flex' : 'none';
   if(on){
     if(!mgInterval){
       mgInterval = setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
