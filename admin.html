@@ -157,6 +157,26 @@
     .mg-pulse-dot{ animation:none; }
   }
 
+  /* ---------- Small brain agent icon on the Leads view, only visible when the machine is on ---------- */
+  .mg-agent-wrap{ display:flex; align-items:center; gap:0; }
+  .mg-agent-core{
+    fill:var(--mg-turquoise); filter:drop-shadow(0 0 6px var(--mg-turquoise));
+    animation:mgBrainPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes mgBrainPulse{ 0%,100%{ r:9; opacity:1; } 50%{ r:7; opacity:0.6; } }
+  .mg-agent-orbit{ transform-origin:30px 30px; animation:mgOrbitSpin 6s linear infinite; }
+  @keyframes mgOrbitSpin{ to{ transform:rotate(360deg); } }
+  .mg-agent-spoke{ stroke:var(--mg-turquoise); stroke-width:1; opacity:0.45; }
+  .mg-agent-neuron{ fill:var(--mg-sapphire); filter:drop-shadow(0 0 3px var(--mg-sapphire)); }
+  .mg-agent-line{
+    width:44px; height:3px; margin-left:2px;
+    background:linear-gradient(90deg, var(--mg-turquoise), rgba(62,217,201,0.1));
+    box-shadow:0 0 6px var(--mg-turquoise);
+  }
+  @media (prefers-reduced-motion: reduce){
+    .mg-agent-core, .mg-agent-orbit{ animation:none; }
+  }
+
   /* ---------- Mini GALAXY map view (its own visual identity) ---------- */
   :root{
     --mg-sapphire:#4E8FE0; --mg-sapphire-dim:rgba(78,143,224,0.15);
@@ -328,7 +348,23 @@
     </div>
     <div class="view" id="view-leads">
       <div class="view-head">
-        <h2>Leads</h2>
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div class="mg-agent-wrap" id="mg-agent-wrap" style="display:none;">
+            <svg class="mg-agent-svg" viewBox="0 0 60 60" width="42" height="42">
+              <circle cx="30" cy="30" r="9" class="mg-agent-core"/>
+              <g class="mg-agent-orbit">
+                <line x1="30" y1="30" x2="30" y2="8" class="mg-agent-spoke"/>
+                <line x1="30" y1="30" x2="49" y2="38" class="mg-agent-spoke"/>
+                <line x1="30" y1="30" x2="12" y2="42" class="mg-agent-spoke"/>
+                <circle cx="30" cy="8" r="3" class="mg-agent-neuron"/>
+                <circle cx="49" cy="38" r="3" class="mg-agent-neuron"/>
+                <circle cx="12" cy="42" r="3" class="mg-agent-neuron"/>
+              </g>
+            </svg>
+            <div class="mg-agent-line"></div>
+          </div>
+          <h2>Leads</h2>
+        </div>
         <div style="display:flex; align-items:center; gap:16px;">
           <div class="mg-pill" id="mg-pill" style="display:none;">
             <span class="mg-pulse-dot"></span>
@@ -635,6 +671,15 @@ function mgSetMachine(on){
 }
 document.getElementById('mg-machine-toggle').addEventListener('change', e => mgSetMachine(e.target.checked));
 
+async function mgCheckAgentVisible(){
+  try{
+    const res = await fetch(MG_WORKER_URL + '/machine');
+    if(!res.ok) return;
+    const data = await res.json();
+    document.getElementById('mg-agent-wrap').style.display = data.machine_on ? 'flex' : 'none';
+  }catch(err){ console.error('Machine state check failed:', err); }
+}
+
 async function enterDashboard(){
   document.getElementById('user-name').textContent = displayName(currentUser);
   show('app-shell');
@@ -646,6 +691,8 @@ async function enterDashboard(){
   mgRender();
   updateMgPill();
   mgSetMachine(localStorage.getItem('mg_machine_on') === '1');
+  await mgCheckAgentVisible();
+  setInterval(mgCheckAgentVisible, 20000);
 }
 
 // ---- Tab switching ----
