@@ -608,6 +608,25 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="mg-draft-modal-backdrop">
+  <div class="modal" style="max-width:520px;">
+    <h2 id="mg-draft-modal-title">Create Draft</h2>
+    <p style="color:var(--bone-dim); font-size:13px; margin-top:-6px;">
+      No email account is linked yet, so this just builds the draft for you to copy and send manually.
+      Once AI'D It's email is connected, this same button will create (and eventually send) it automatically.
+    </p>
+    <div class="field"><label>To</label><input type="text" id="mg-draft-to" readonly></div>
+    <div class="field"><label>Subject</label><input type="text" id="mg-draft-subject"></div>
+    <div class="field"><label>Body</label><textarea id="mg-draft-body" rows="9"></textarea></div>
+    <div class="modal-actions">
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="btn ghost" id="mg-draft-close-btn">Close</button>
+        <button class="btn" id="mg-draft-copy-btn">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const LS_URL = 'aidit_sb_url';
 const LS_KEY = 'aidit_sb_key';
@@ -1024,6 +1043,58 @@ function updateMgAgentBadge(){
   }
 }
 
+// ---- Dispatch: email draft template ----
+// Right now this just fills the modal for you to copy and send manually.
+// Once AI'D It has its own email account connected (Gmail API + OAuth),
+// swap the "Copy to Clipboard" button's action for a real call that
+// creates (and eventually sends) the draft automatically — everything
+// else here (the template, the modal, the per-lead trigger) stays the same.
+function mgBuildDraftTemplate(lead){
+  const name = lead.name || 'there';
+  const subject = `Quick one for ${name}`;
+  const body =
+`Hi ${name} team,
+
+I help businesses like yours use AI to save time and cut costs — think automated bookings, after-hours enquiry handling, or just cleaning up the admin that quietly eats your week.
+
+No pitch, no obligation — happy to do a quick, free audit of where AI could actually save you time, and I'll tell you honestly if it's not worth it.
+
+Would you be up for a short chat?
+
+Best,
+AI'D It`;
+  return { subject, body };
+}
+
+function mgOpenDraftModal(lead){
+  const { subject, body } = mgBuildDraftTemplate(lead);
+  document.getElementById('mg-draft-modal-title').textContent = 'Create Draft — ' + lead.name;
+  document.getElementById('mg-draft-to').value = lead.email || '';
+  document.getElementById('mg-draft-subject').value = subject;
+  document.getElementById('mg-draft-body').value = body;
+  document.getElementById('mg-draft-modal-backdrop').classList.add('open');
+}
+
+document.getElementById('mg-draft-close-btn').addEventListener('click', () => {
+  document.getElementById('mg-draft-modal-backdrop').classList.remove('open');
+});
+document.getElementById('mg-draft-modal-backdrop').addEventListener('click', e => {
+  if(e.target.id === 'mg-draft-modal-backdrop') document.getElementById('mg-draft-modal-backdrop').classList.remove('open');
+});
+document.getElementById('mg-draft-copy-btn').addEventListener('click', async () => {
+  const to = document.getElementById('mg-draft-to').value;
+  const subject = document.getElementById('mg-draft-subject').value;
+  const body = document.getElementById('mg-draft-body').value;
+  const text = `To: ${to}\nSubject: ${subject}\n\n${body}`;
+  try{
+    await navigator.clipboard.writeText(text);
+    alert('Copied — paste it straight into a new email.');
+  }catch(err){
+    console.error('Copy failed:', err);
+    alert('Could not copy automatically — select the text manually instead.');
+  }
+});
+
 function mgOpenPushModal(){
   const listEl = document.getElementById('mg-push-list');
   const callable = mgCallableLeads();
@@ -1153,11 +1224,25 @@ function mgRenderList(){
   shown.forEach(lead => {
     const row = document.createElement('div');
     row.className = 'mg-list-row';
+    row.style.justifyContent = 'space-between';
+    const draftBtnHtml = lead.status === 'sent'
+      ? '<button class="btn" style="padding:8px 14px; font-size:10px;" data-draft-id="' + lead.id + '">Create Draft</button>'
+      : '';
     row.innerHTML =
       '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
       '<div class="mg-list-meta">' + escapeHtml(lead.town || '') + (lead.phone ? ' · ' + escapeHtml(lead.phone) : '') + (lead.email ? ' · ' + escapeHtml(lead.email) : '') + (lead.website ? ' · ' + escapeHtml(lead.website) : '') + '</div></div>' +
-      '<div class="mg-list-meta">' + escapeHtml(lead.status) + (lead.live_url ? ' · live' : '') + '</div>';
+      '<div style="display:flex; align-items:center; gap:14px;">' +
+      '<div class="mg-list-meta">' + escapeHtml(lead.status) + (lead.live_url ? ' · live' : '') + '</div>' +
+      draftBtnHtml +
+      '</div>';
     row.addEventListener('click', () => mgOpenModal(lead.id));
+    const draftBtn = row.querySelector('[data-draft-id]');
+    if(draftBtn){
+      draftBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mgOpenDraftModal(lead);
+      });
+    }
     list.appendChild(row);
   });
   if(items.length > MG_LIST_RENDER_CAP){
