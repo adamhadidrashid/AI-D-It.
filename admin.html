@@ -766,6 +766,8 @@ function displayName(user){
 }
 
 let mgInterval = null;
+let mgPrevMachineOn = null;
+
 function applyMachineUI(on){
   document.getElementById('mg-machine-toggle').checked = on;
   document.getElementById('mg-machine-state').textContent = on ? 'On' : 'Off';
@@ -773,12 +775,15 @@ function applyMachineUI(on){
   document.getElementById('mg-agent-wrap').style.display = on ? 'flex' : 'none';
   document.getElementById('mg-living-sphere-wrap').classList.toggle('mg-sphere-dim', !on);
   if(on){
-    // The connector pulse-dots use SVG's animateMotion, which can get
-    // stuck after a visibility/class toggle in some browsers rather than
-    // cleanly resuming — force-restart them explicitly.
-    document.querySelectorAll('.mg-connectors animateMotion, .mg-feed-connectors animateMotion').forEach(el => {
-      try{ el.beginElement(); }catch(err){ /* not supported in this browser, harmless to skip */ }
-    });
+    // Only force-restart the pulse-dots on a genuine off->on transition —
+    // doing this on every routine 20s sync check (even while already on)
+    // was resetting the animation constantly, which looked like it had
+    // stopped pulsing rather than actually helping anything.
+    if(mgPrevMachineOn === false){
+      document.querySelectorAll('.mg-connectors animateMotion, .mg-feed-connectors animateMotion').forEach(el => {
+        try{ el.beginElement(); }catch(err){ /* not supported in this browser, harmless to skip */ }
+      });
+    }
     if(!mgInterval){
       mgInterval = setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
     }
@@ -786,6 +791,7 @@ function applyMachineUI(on){
     clearInterval(mgInterval);
     mgInterval = null;
   }
+  mgPrevMachineOn = on;
 }
 
 async function mgSyncMachineFromServer(){
