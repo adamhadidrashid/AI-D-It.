@@ -1254,14 +1254,28 @@ document.getElementById('mg-modal-backdrop').addEventListener('click', e => {
 document.getElementById('mg-save-btn').addEventListener('click', async () => {
   const name = document.getElementById('mg-f-name').value.trim();
   if(!name){ document.getElementById('mg-f-name').focus(); return; }
+  let status = document.getElementById('mg-f-stage').value;
+  const phone = document.getElementById('mg-f-phone').value.trim();
+  const email = document.getElementById('mg-f-email').value.trim();
+
+  // The simple funnel: LIVE ("ready") is only for businesses you can call.
+  // If it's marked ready but has no phone — just an email — it goes
+  // straight to Dispatch instead, since that's where email-only leads
+  // actually belong.
+  let autoRouted = false;
+  if(status === 'ready' && !phone && email){
+    status = 'sent';
+    autoRouted = true;
+  }
+
   const data = {
     name,
     town: document.getElementById('mg-f-town').value.trim(),
     website: document.getElementById('mg-f-website').value.trim(),
-    phone: document.getElementById('mg-f-phone').value.trim(),
-    email: document.getElementById('mg-f-email').value.trim(),
+    phone,
+    email,
     live_url: document.getElementById('mg-f-liveurl').value.trim(),
-    status: document.getElementById('mg-f-stage').value
+    status
   };
   try{
     if(mgEditingId){
@@ -1276,6 +1290,9 @@ document.getElementById('mg-save-btn').addEventListener('click', async () => {
     await mgLoadLeads();
     mgRender();
     updateMgPill();
+    if(autoRouted){
+      alert(name + ' has no phone number, so it was routed to Dispatch instead of Live.');
+    }
   }catch(err){ console.error('Mini GALAXY save failed:', err); }
   mgCloseModal();
 });
