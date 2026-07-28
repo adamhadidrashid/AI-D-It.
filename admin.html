@@ -455,15 +455,15 @@
         </div>
         <div class="mg-card mg-forge" data-filter="queued" data-role="forge">
           <div class="mg-agent-name"><span class="mg-badge"></span>FORGE</div>
-          <div class="mg-role">Sites waiting to be built</div>
+          <div class="mg-role">Building the business file</div>
           <div class="mg-count" id="mg-count-forge">0</div>
           <div class="mg-count-lbl">In your queue</div>
         </div>
         <div class="mg-card mg-live" data-filter="ready" data-role="live">
           <div class="mg-agent-name"><span class="mg-badge"></span>LIVE</div>
-          <div class="mg-role">Sites hosted &amp; ready</div>
+          <div class="mg-role">Profile built, in contact</div>
           <div class="mg-count" id="mg-count-live">0</div>
-          <div class="mg-count-lbl">Hosted sites</div>
+          <div class="mg-count-lbl">Active files</div>
         </div>
         <div class="mg-card mg-dispatch" data-filter="sent" data-role="dispatch">
           <div class="mg-agent-name"><span class="mg-badge"></span>DISPATCH</div>
@@ -541,20 +541,28 @@
 </div>
 
 <div class="modal-backdrop" id="mg-modal-backdrop">
-  <div class="modal">
+  <div class="modal" style="max-width:460px;">
     <h2 id="mg-modal-title">Add Business</h2>
     <div class="field"><label>Business name</label><input type="text" id="mg-f-name"></div>
     <div class="field"><label>Town</label><input type="text" id="mg-f-town"></div>
     <div class="field"><label>Phone</label><input type="text" id="mg-f-phone"></div>
     <div class="field"><label>Email</label><input type="text" id="mg-f-email"></div>
-    <div class="field"><label>Live URL (once site's hosted)</label><input type="text" id="mg-f-liveurl"></div>
+    <div class="field"><label>Live URL (optional)</label><input type="text" id="mg-f-liveurl"></div>
     <div class="field"><label>Stage</label>
       <select id="mg-f-stage">
-        <option value="queued">Queued</option>
-        <option value="ready">Ready (site live)</option>
+        <option value="queued">Queued (Scout found it)</option>
+        <option value="ready">Ready (business file built)</option>
         <option value="sent">Sent</option>
         <option value="rejected">Rejected</option>
       </select>
+    </div>
+    <div class="field" id="mg-activity-field" style="display:none;">
+      <label>Business file — activity log</label>
+      <div id="mg-activity-list" style="max-height:130px; overflow-y:auto; border:1px solid var(--hair); padding:8px; font-size:12px; color:var(--bone-dim); margin-bottom:8px;"></div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="mg-activity-input" placeholder="Log a call, email, note...">
+        <button class="btn" id="mg-activity-add" style="white-space:nowrap;">Log</button>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn danger" id="mg-delete-btn" style="display:none;">Delete</button>
@@ -921,8 +929,8 @@ function mgRender(){
 
   const latest = arr => arr.length ? arr[arr.length-1].name : '—';
   document.getElementById('mg-feed-scout').textContent = mgLeads.length ? `${latest(mgLeads)} found` : '—';
-  document.getElementById('mg-feed-forge').textContent = queued.length ? `Waiting: ${latest(queued)}` : 'Queue empty';
-  document.getElementById('mg-feed-live').textContent = ready.length ? `${latest(ready)} is live` : 'Nothing live yet';
+  document.getElementById('mg-feed-forge').textContent = queued.length ? `Building file: ${latest(queued)}` : 'Queue empty';
+  document.getElementById('mg-feed-live').textContent = ready.length ? `${latest(ready)} — file active` : 'No active files yet';
   document.getElementById('mg-feed-dispatch').textContent = sent.length ? `${latest(sent)} — sent` : 'Nothing sent yet';
 
   mgRenderList();
@@ -931,7 +939,7 @@ function mgRender(){
 function mgRenderList(){
   const list = document.getElementById('mg-list');
   const title = document.getElementById('mg-list-title');
-  const titles = { all:'All businesses', queued:'Forge — queue', ready:'Live — hosted sites', sent:'Dispatch — sent', rejected:'Rejected' };
+  const titles = { all:'All businesses', queued:'Forge — building files', ready:'Live — active business files', sent:'Dispatch — sent', rejected:'Rejected' };
   title.textContent = titles[mgFilter] || 'All businesses';
 
   const items = mgFilter === 'all' ? mgLeads : mgLeads.filter(l => l.status === mgFilter);
@@ -964,6 +972,7 @@ document.querySelectorAll('.mg-card').forEach(card => {
 
 function mgOpenModal(id){
   const deleteBtn = document.getElementById('mg-delete-btn');
+  const activityField = document.getElementById('mg-activity-field');
   if(id){
     mgEditingId = id;
     const lead = mgLeads.find(l => l.id === id);
@@ -975,6 +984,8 @@ function mgOpenModal(id){
     document.getElementById('mg-f-liveurl').value = lead.live_url || '';
     document.getElementById('mg-f-stage').value = lead.status || 'queued';
     deleteBtn.style.display = 'inline-block';
+    activityField.style.display = 'block';
+    mgLoadActivity(id);
   } else {
     mgEditingId = null;
     document.getElementById('mg-modal-title').textContent = 'Add Business';
@@ -985,6 +996,7 @@ function mgOpenModal(id){
     document.getElementById('mg-f-liveurl').value = '';
     document.getElementById('mg-f-stage').value = 'queued';
     deleteBtn.style.display = 'none';
+    activityField.style.display = 'none';
   }
   document.getElementById('mg-modal-backdrop').classList.add('open');
 }
@@ -992,6 +1004,39 @@ function mgCloseModal(){
   document.getElementById('mg-modal-backdrop').classList.remove('open');
   mgEditingId = null;
 }
+
+async function mgLoadActivity(leadId){
+  const listEl = document.getElementById('mg-activity-list');
+  listEl.innerHTML = 'Loading...';
+  try{
+    const res = await fetch(MG_WORKER_URL + '/leads/' + leadId + '/activity');
+    const entries = res.ok ? await res.json() : [];
+    if(!entries.length){
+      listEl.innerHTML = '<div style="opacity:0.6;">No activity logged yet</div>';
+      return;
+    }
+    listEl.innerHTML = entries.map(e => {
+      const when = new Date(e.created_at).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+      return '<div style="margin-bottom:6px;"><span style="color:var(--bone-dim); font-family:\'IBM Plex Mono\', monospace; font-size:10px;">' + when + '</span><br>' + escapeHtml(e.note) + '</div>';
+    }).join('');
+  }catch(err){
+    console.error('Failed to load activity:', err);
+    listEl.innerHTML = '<div style="color:var(--mg-ruby);">Could not load activity</div>';
+  }
+}
+
+document.getElementById('mg-activity-add').addEventListener('click', async () => {
+  const input = document.getElementById('mg-activity-input');
+  const note = input.value.trim();
+  if(!note || !mgEditingId) return;
+  try{
+    await fetch(MG_WORKER_URL + '/leads/' + mgEditingId + '/activity', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ note })
+    });
+    input.value = '';
+    await mgLoadActivity(mgEditingId);
+  }catch(err){ console.error('Failed to log activity:', err); }
+});
 
 document.getElementById('mg-add-btn').addEventListener('click', () => mgOpenModal(null));
 document.getElementById('mg-cancel-btn').addEventListener('click', mgCloseModal);
