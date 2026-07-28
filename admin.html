@@ -379,7 +379,7 @@
     <div class="view" id="view-leads">
       <div class="view-head">
         <div style="display:flex; align-items:center; gap:14px;">
-          <div class="mg-agent-wrap" id="mg-agent-wrap" style="display:none; cursor:pointer;" title="Click to see leads ready to push">
+          <div class="mg-agent-wrap" id="mg-agent-wrap" style="display:none;">
             <svg class="mg-agent-svg" viewBox="0 0 60 60" width="42" height="42">
               <circle cx="30" cy="30" r="9" class="mg-agent-core"/>
               <g class="mg-agent-orbit">
@@ -391,7 +391,6 @@
                 <circle cx="12" cy="42" r="3" class="mg-agent-neuron"/>
               </g>
             </svg>
-            <span id="mg-agent-badge" style="display:none;"></span>
             <div class="mg-agent-line"></div>
           </div>
           <h2>Leads</h2>
@@ -1014,13 +1013,6 @@ function mgCallableLeads(){
 
 function updateMgAgentBadge(){
   const count = mgCallableLeads().length;
-  const agentBadge = document.getElementById('mg-agent-badge');
-  if(count > 0){
-    agentBadge.style.display = 'inline-block';
-    agentBadge.textContent = count;
-  } else {
-    agentBadge.style.display = 'none';
-  }
   const sphereBadge = document.getElementById('mg-sphere-badge');
   if(sphereBadge){
     if(count > 0){
@@ -1052,7 +1044,6 @@ function mgOpenPushModal(){
   document.getElementById('mg-push-modal-backdrop').classList.add('open');
 }
 
-document.getElementById('mg-agent-wrap').addEventListener('click', mgOpenPushModal);
 document.getElementById('mg-push-cancel-btn').addEventListener('click', () => {
   document.getElementById('mg-push-modal-backdrop').classList.remove('open');
 });
