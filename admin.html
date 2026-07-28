@@ -64,9 +64,6 @@
   }
   .back-link:hover{ text-shadow:0 0 16px rgba(46,230,255,0.8); }
 
-  @media (prefers-reduced-motion: reduce){
-    .ambient-bg::before, .ambient-bg::after{ animation:none; }
-  }
   .panel{ width:100%; max-width:380px; background:var(--void-2); border:1px solid var(--hair); padding:32px; display:flex; flex-direction:column; gap:16px; }
   .panel h1{ font-family:'Big Shoulders Display', sans-serif; text-transform:uppercase; font-size:26px; }
   .panel h1 span{ color:var(--ember); }
@@ -154,9 +151,6 @@
     color:var(--bone-dim); border:1px solid var(--hair); padding:8px 14px; cursor:pointer;
   }
   .mg-pill:hover{ color:var(--ember); border-color:var(--ember); }
-  @media (prefers-reduced-motion: reduce){
-    .mg-pulse-dot{ animation:none; }
-  }
 
   /* ---------- Small brain agent icon on the Leads view, only visible when the machine is on ---------- */
   .mg-agent-wrap{ display:flex; align-items:center; gap:0; position:relative; }
@@ -179,9 +173,6 @@
     width:44px; height:3px; margin-left:2px;
     background:linear-gradient(90deg, var(--mg-turquoise), rgba(62,217,201,0.1));
     box-shadow:0 0 6px var(--mg-turquoise);
-  }
-  @media (prefers-reduced-motion: reduce){
-    .mg-agent-core, .mg-agent-orbit{ animation:none; }
   }
 
   /* ---------- Living sphere agent, fixed bottom-left of the whole app ---------- */
@@ -248,7 +239,6 @@
   .mg-dot-forge{ fill:var(--mg-ruby); }
   .mg-dot-live{ fill:var(--mg-green); }
   .mg-dot-dispatch{ fill:var(--mg-amber); }
-  @media (prefers-reduced-motion: reduce){ .mg-dot{ display:none; } }
 
   /* ---------- Machine off = everything dark and still ---------- */
   .mg-line, .mg-dot, .mg-node, .mg-card, .mg-card::before, .mg-feed-box, .mg-flow-track::after{
@@ -1456,8 +1446,6 @@ try{
   const glow = new THREE.Mesh(glowGeo, glowMat);
   group.add(glow);
 
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
   const palette = [0xff2e9a, 0xff7a1a, 0x1a3aff, 0xf5ff2e].map(c => new THREE.Color(c));
   const _cycleColor = new THREE.Color();
   function colorAt(tSeconds, phaseOffset){
@@ -1473,7 +1461,7 @@ try{
 
   function animate(){
     requestAnimationFrame(animate);
-    if(!reduceMotion){
+    {
       core.rotation.y += 0.004;
       core.rotation.x += 0.0015;
       glow.rotation.y -= 0.0025;
