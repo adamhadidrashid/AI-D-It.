@@ -1077,7 +1077,26 @@ document.getElementById('mg-push-confirm-btn').addEventListener('click', async (
     }));
     await sbClient.from('leads').upsert(rows, { onConflict: 'biz,source', ignoreDuplicates: true });
 
+    // Find the resulting main-lead IDs (works whether just-inserted or
+    // already existed), so we can carry the CRM history over to where
+    // it's actually meant to live long-term — the main Leads list, not
+    // Mini GALAXY's working file.
+    const bizNames = callable.map(l => l.name);
+    const { data: mainMatches } = await sbClient.from('leads').select('id,biz').eq('source', 'Mini GALAXY').in('biz', bizNames);
+    const idByBiz = {};
+    (mainMatches || []).forEach(r => { idByBiz[r.biz] = r.id; });
+
     for(const lead of callable){
+      const mainLeadId = idByBiz[lead.name];
+      if(!mainLeadId) continue;
+      try{
+        const actRes = await fetch(MG_WORKER_URL + '/leads/' + lead.id + '/activity');
+        const activity = actRes.ok ? await actRes.json() : [];
+        for(const entry of activity){
+          await sbClient.from('lead_activity').insert({ lead_id: mainLeadId, note: '[Mini GALAXY] ' + entry.note });
+        }
+      }catch(actErr){ console.error('Activity carry-over failed for', lead.name, actErr); }
+
       await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
         method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pushed_to_main: true })
       });
