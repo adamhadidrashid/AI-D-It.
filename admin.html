@@ -1066,7 +1066,10 @@ AI'D It`;
   return { subject, body };
 }
 
+let mgDraftingLeadId = null;
+
 function mgOpenDraftModal(lead){
+  mgDraftingLeadId = lead.id;
   const { subject, body } = mgBuildDraftTemplate(lead);
   document.getElementById('mg-draft-modal-title').textContent = 'Create Draft — ' + lead.name;
   document.getElementById('mg-draft-to').value = lead.email || '';
@@ -1088,7 +1091,16 @@ document.getElementById('mg-draft-copy-btn').addEventListener('click', async () 
   const text = `To: ${to}\nSubject: ${subject}\n\n${body}`;
   try{
     await navigator.clipboard.writeText(text);
-    alert('Copied — paste it straight into a new email.');
+    if(mgDraftingLeadId){
+      await fetch(MG_WORKER_URL + '/leads/' + mgDraftingLeadId, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ draft_created: true })
+      });
+      await mgLoadLeads();
+      mgRender();
+      updateMgPill();
+    }
+    document.getElementById('mg-draft-modal-backdrop').classList.remove('open');
+    alert('Copied — paste it straight into a new email. Marked as drafted.');
   }catch(err){
     console.error('Copy failed:', err);
     alert('Could not copy automatically — select the text manually instead.');
@@ -1225,16 +1237,19 @@ function mgRenderList(){
     const row = document.createElement('div');
     row.className = 'mg-list-row';
     row.style.justifyContent = 'space-between';
-    const draftBtnHtml = lead.status === 'sent'
-      ? '<button class="btn" style="padding:8px 14px; font-size:10px;" data-draft-id="' + lead.id + '">Create Draft</button>'
-      : '';
+    const isDispatch = lead.status === 'sent';
+    let rightHtml;
+    if(isDispatch){
+      rightHtml = lead.draft_created
+        ? '<span style="color:#4ee08a; font-family:\'IBM Plex Mono\', monospace; font-size:11px; letter-spacing:0.05em;">&#10003; Drafted</span>'
+        : '<button class="btn" style="padding:8px 14px; font-size:10px;" data-draft-id="' + lead.id + '">Create Draft</button>';
+    } else {
+      rightHtml = '<div class="mg-list-meta">' + escapeHtml(lead.status) + (lead.live_url ? ' · live' : '') + '</div>';
+    }
     row.innerHTML =
       '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
       '<div class="mg-list-meta">' + escapeHtml(lead.town || '') + (lead.phone ? ' · ' + escapeHtml(lead.phone) : '') + (lead.email ? ' · ' + escapeHtml(lead.email) : '') + (lead.website ? ' · ' + escapeHtml(lead.website) : '') + '</div></div>' +
-      '<div style="display:flex; align-items:center; gap:14px;">' +
-      '<div class="mg-list-meta">' + escapeHtml(lead.status) + (lead.live_url ? ' · live' : '') + '</div>' +
-      draftBtnHtml +
-      '</div>';
+      '<div style="display:flex; align-items:center; gap:14px;">' + rightHtml + '</div>';
     row.addEventListener('click', () => mgOpenModal(lead.id));
     const draftBtn = row.querySelector('[data-draft-id]');
     if(draftBtn){
