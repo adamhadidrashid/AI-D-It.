@@ -773,6 +773,12 @@ function applyMachineUI(on){
   document.getElementById('mg-agent-wrap').style.display = on ? 'flex' : 'none';
   document.getElementById('mg-living-sphere-wrap').classList.toggle('mg-sphere-dim', !on);
   if(on){
+    // The connector pulse-dots use SVG's animateMotion, which can get
+    // stuck after a visibility/class toggle in some browsers rather than
+    // cleanly resuming — force-restart them explicitly.
+    document.querySelectorAll('.mg-connectors animateMotion, .mg-feed-connectors animateMotion').forEach(el => {
+      try{ el.beginElement(); }catch(err){ /* not supported in this browser, harmless to skip */ }
+    });
     if(!mgInterval){
       mgInterval = setInterval(async () => { await mgLoadLeads(); mgRender(); updateMgPill(); }, 30000);
     }
