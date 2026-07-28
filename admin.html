@@ -102,14 +102,15 @@
   .user-pill .dot{ width:8px; height:8px; border-radius:50%; background:var(--ember); box-shadow:0 0 8px var(--ember); }
   .user-menu{
     position:absolute; top:calc(100% + 8px); right:0; background:var(--void-2); border:1px solid var(--hair);
-    min-width:140px; display:none; flex-direction:column; z-index:20;
+    min-width:170px; display:none; flex-direction:column; z-index:20;
   }
   .user-menu.open{ display:flex; }
   .user-menu button{
     background:none; border:none; color:var(--bone-dim); text-align:left; padding:12px 16px;
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer;
   }
-  .user-menu button:hover{ color:var(--blood); }
+  .user-menu button:hover{ color:var(--bone); }
+  .user-menu button#wipe-btn:hover{ color:#ff6a63; }
 
   .view{ padding:24px 26px; flex:1; }
 
@@ -363,6 +364,8 @@
         <span class="dot"></span>
         <span id="user-name">—</span>
         <div class="user-menu" id="user-menu">
+          <button id="profile-btn">Profile</button>
+          <button id="wipe-btn" style="color:var(--blood);">Wipe all data</button>
           <button id="logout-btn">Log out</button>
         </div>
       </div>
@@ -668,6 +671,35 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   hide('app-shell');
   show('login-screen');
   document.querySelector('.back-link').style.display = 'flex';
+});
+
+document.getElementById('profile-btn').addEventListener('click', () => {
+  const email = currentUser && currentUser.email ? currentUser.email : 'Unknown';
+  const name = displayName(currentUser);
+  alert('Logged in as: ' + name + '\nEmail: ' + email);
+});
+
+document.getElementById('wipe-btn').addEventListener('click', async () => {
+  const confirmed = confirm(
+    'This permanently deletes EVERYTHING: all leads (both boards), all businesses Mini GALAXY has found, its activity logs, and resets every town back to unscanned.\n\nThis cannot be undone. Continue?'
+  );
+  if (!confirmed) return;
+  const doubleCheck = confirm('Really sure? This wipes the whole system clean for a fresh test run.');
+  if (!doubleCheck) return;
+
+  try {
+    await sbClient.from('leads').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await fetch(MG_WORKER_URL + '/wipe', { method: 'POST' });
+    await loadLeads();
+    render();
+    await mgLoadLeads();
+    mgRender();
+    updateMgPill();
+    alert('System wiped. Ready for a fresh run.');
+  } catch (err) {
+    console.error('Wipe failed:', err);
+    alert('Something went wrong during the wipe — check the console.');
+  }
 });
 
 document.getElementById('user-pill').addEventListener('click', (e) => {
