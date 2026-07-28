@@ -188,7 +188,7 @@
   #mg-living-sphere-wrap{
     position:fixed; bottom:70px; left:250px; z-index:150;
     display:flex; flex-direction:column; align-items:center; gap:6px;
-    pointer-events:none;
+    cursor:pointer;
   }
   #mg-living-sphere{ width:150px; height:150px; }
   #mg-living-sphere-label{
@@ -1013,13 +1013,22 @@ function mgCallableLeads(){
 }
 
 function updateMgAgentBadge(){
-  const badge = document.getElementById('mg-agent-badge');
   const count = mgCallableLeads().length;
+  const agentBadge = document.getElementById('mg-agent-badge');
   if(count > 0){
-    badge.style.display = 'inline-block';
-    badge.textContent = count;
+    agentBadge.style.display = 'inline-block';
+    agentBadge.textContent = count;
   } else {
-    badge.style.display = 'none';
+    agentBadge.style.display = 'none';
+  }
+  const sphereBadge = document.getElementById('mg-sphere-badge');
+  if(sphereBadge){
+    if(count > 0){
+      sphereBadge.style.display = 'inline';
+      sphereBadge.textContent = '(' + count + ')';
+    } else {
+      sphereBadge.style.display = 'none';
+    }
   }
 }
 
@@ -1270,7 +1279,7 @@ boot();
 
 <div id="mg-living-sphere-wrap">
   <canvas id="mg-living-sphere"></canvas>
-  <div id="mg-living-sphere-label">Mini Galaxy</div>
+  <div id="mg-living-sphere-label">Mini Galaxy <span id="mg-sphere-badge" style="display:none;"></span></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -1329,6 +1338,12 @@ try{
   animate();
 })();
 }catch(err){ console.error('Living sphere init failed:', err); }
+</script>
+
+<script>
+document.getElementById('mg-living-sphere-wrap').addEventListener('click', () => {
+  if(typeof mgOpenPushModal === 'function') mgOpenPushModal();
+});
 </script>
 
 </body>
