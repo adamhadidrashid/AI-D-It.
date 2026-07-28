@@ -1132,6 +1132,8 @@ function mgRender(){
   mgRenderList();
 }
 
+const MG_LIST_RENDER_CAP = 300;
+
 function mgRenderList(){
   const list = document.getElementById('mg-list');
   const title = document.getElementById('mg-list-title');
@@ -1147,7 +1149,8 @@ function mgRenderList(){
     list.appendChild(empty);
     return;
   }
-  items.forEach(lead => {
+  const shown = items.slice(0, MG_LIST_RENDER_CAP);
+  shown.forEach(lead => {
     const row = document.createElement('div');
     row.className = 'mg-list-row';
     row.innerHTML =
@@ -1157,6 +1160,12 @@ function mgRenderList(){
     row.addEventListener('click', () => mgOpenModal(lead.id));
     list.appendChild(row);
   });
+  if(items.length > MG_LIST_RENDER_CAP){
+    const note = document.createElement('div');
+    note.className = 'mg-list-empty';
+    note.textContent = `Showing the first ${MG_LIST_RENDER_CAP} of ${items.length} — filter to a specific stage to narrow this down.`;
+    list.appendChild(note);
+  }
 }
 
 document.querySelectorAll('.mg-card').forEach(card => {
