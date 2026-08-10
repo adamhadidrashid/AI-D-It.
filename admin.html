@@ -86,6 +86,7 @@
   .tab-link.active{ color:var(--ember); border-left-color:var(--ember); background:rgba(46,230,255,0.05); }
   .tab-link.disabled{ color:var(--steel); cursor:default; }
   .tab-link.disabled:hover{ color:var(--steel); }
+  .corp-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--blood); margin-right:8px; box-shadow:0 0 6px var(--blood); }
 
   .main-col{ flex:1; display:flex; flex-direction:column; min-width:0; }
   .topbar{
@@ -363,6 +364,7 @@
   <div class="sidebar">
     <div class="logotype">AI<span>'D</span> IT</div>
     <a class="tab-link active" data-tab="leads">Leads</a>
+    <a class="tab-link" data-tab="corporate"><span class="corp-dot"></span>Corporate</a>
     <a class="tab-link" data-tab="minigalaxy">Mini GALAXY</a>
     <a class="tab-link disabled" title="Add more tabs later">+ More soon</a>
   </div>
@@ -418,6 +420,21 @@
       <div id="mg-living-sphere-wrap">
         <canvas id="mg-living-sphere"></canvas>
         <div id="mg-living-sphere-label">Mini Galaxy <span id="mg-sphere-badge" style="display:none;"></span></div>
+      </div>
+    </div>
+
+    <div class="view hidden" id="view-corporate">
+      <div class="view-head">
+        <h2><span class="corp-dot"></span>Corporate</h2>
+      </div>
+      <div class="board" id="corp-board">
+        <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
+        <div class="column" data-stage="calling"><div class="column-head"><span>Calling</span><span class="count">0</span></div><div class="cards" data-stage="calling"></div></div>
+        <div class="column" data-stage="callback"><div class="column-head"><span>Call Back</span><span class="count">0</span></div><div class="cards" data-stage="callback"></div></div>
+        <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
+        <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
+        <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
+        <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
       </div>
     </div>
 
@@ -763,6 +780,7 @@ document.getElementById('wipe-btn').addEventListener('click', async () => {
     await fetch(MG_WORKER_URL + '/wipe', { method: 'POST' });
     await loadLeads();
     render();
+    renderCorporate();
     await mgLoadLeads();
     mgRender();
     updateMgPill();
@@ -843,6 +861,7 @@ async function enterDashboard(){
   document.querySelector('.back-link').style.display = 'none';
   await loadLeads();
   render();
+  renderCorporate();
   await mgLoadLeads();
   mgRender();
   updateMgPill();
@@ -871,7 +890,7 @@ async function loadLeads(){
   leads = data.map(row => ({
     id: row.id, biz: row.biz, contact: row.contact, phone: row.phone,
     source: row.source, notes: row.notes, stage: row.stage, website: row.website,
-    call_status: row.call_status, call_outcome: row.call_outcome
+    call_status: row.call_status, call_outcome: row.call_outcome, is_corporate: row.is_corporate
   }));
 }
 
@@ -891,15 +910,26 @@ async function moveLeadStage(id, stage, outcome){
   const patch = outcome !== undefined ? { stage, call_outcome: outcome } : { stage };
   await sbClient.from('leads').update(patch).eq('id', id);
   render();
+  renderCorporate();
 }
 
-function render(){
-  document.querySelectorAll('#board .cards').forEach(col => col.innerHTML = '');
+async function moveToCorporate(id){
+  const lead = leads.find(l => l.id === id);
+  if(!lead) return;
+  lead.is_corporate = true;
+  lead.stage = 'new';
+  await sbClient.from('leads').update({ is_corporate: true, stage: 'new' }).eq('id', id);
+  render();
+  renderCorporate();
+}
+
+function renderBoard(boardSelector, leadsList, showCorpButton){
+  document.querySelectorAll(boardSelector + ' .cards').forEach(col => col.innerHTML = '');
   const stages = ['new','calling','callback','contacted','audit','won','lost'];
   stages.forEach(stage => {
-    const items = leads.filter(l => l.stage === stage);
-    const col = document.querySelector('.cards[data-stage="'+stage+'"]');
-    document.querySelector('.column[data-stage="'+stage+'"] .count').textContent = items.length;
+    const items = leadsList.filter(l => l.stage === stage);
+    const col = document.querySelector(boardSelector + ' .cards[data-stage="'+stage+'"]');
+    document.querySelector(boardSelector + ' .column[data-stage="'+stage+'"] .count').textContent = items.length;
     if(items.length === 0){
       const hint = document.createElement('div');
       hint.className = 'empty-hint';
@@ -966,6 +996,13 @@ function render(){
         apptBtn.textContent = 'Appt Booked';
         apptBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'audit'); });
         actions.append(binBtn, cbBtn, apptBtn);
+        if(showCorpButton){
+          const corpBtn = document.createElement('button');
+          corpBtn.textContent = 'Corporate';
+          corpBtn.style.borderColor = 'var(--blood)';
+          corpBtn.addEventListener('click', e => { e.stopPropagation(); moveToCorporate(lead.id); });
+          actions.appendChild(corpBtn);
+        }
       }
 
       if(actions.children.length) card.appendChild(actions);
@@ -976,21 +1013,34 @@ function render(){
   });
 }
 
-document.querySelectorAll('#board .cards').forEach(col => {
-  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
-  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
-  col.addEventListener('drop', async e => {
-    e.preventDefault();
-    col.classList.remove('drag-over');
-    const id = e.dataTransfer.getData('text/plain');
-    const lead = leads.find(l => l.id === id);
-    if(lead){
-      lead.stage = col.dataset.stage;
-      await sbClient.from('leads').update({ stage: lead.stage }).eq('id', id);
-      render();
-    }
+function render(){
+  renderBoard('#board', leads.filter(l => !l.is_corporate), true);
+}
+
+function renderCorporate(){
+  renderBoard('#corp-board', leads.filter(l => l.is_corporate), false);
+}
+
+function wireBoardDragDrop(boardSelector, corporateOnly){
+  document.querySelectorAll(boardSelector + ' .cards').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', async e => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const lead = leads.find(l => l.id === id);
+      if(lead){
+        lead.stage = col.dataset.stage;
+        await sbClient.from('leads').update({ stage: lead.stage }).eq('id', id);
+        render();
+        renderCorporate();
+      }
+    });
   });
-});
+}
+wireBoardDragDrop('#board');
+wireBoardDragDrop('#corp-board');
 
 function openModal(id){
   const deleteBtn = document.getElementById('delete-lead-btn');
@@ -1092,6 +1142,7 @@ document.getElementById('save-lead-btn').addEventListener('click', async () => {
     }
   }
   render();
+  renderCorporate();
   closeModal();
 });
 
@@ -1100,6 +1151,7 @@ document.getElementById('delete-lead-btn').addEventListener('click', async () =>
     await sbClient.from('leads').delete().eq('id', editingId);
     leads = leads.filter(l => l.id !== editingId);
     render();
+    renderCorporate();
     closeModal();
   }
 });
@@ -1308,6 +1360,7 @@ document.getElementById('mg-push-confirm-btn').addEventListener('click', async (
 
   await loadLeads();
   render();
+  renderCorporate();
   await mgLoadLeads();
   mgRender();
   updateMgPill();
