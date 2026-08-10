@@ -26,7 +26,6 @@
   }
   .btn:hover{ background:var(--ember); color:var(--void); }
   .btn.ghost{ border-color:var(--steel); color:var(--bone-dim); }
-  .btn.active-filter{ border-color:var(--ember); color:var(--ember); background:rgba(46,230,255,0.08); }
   .btn.ghost:hover{ background:var(--steel); color:var(--bone); }
   .field label{ display:block; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--bone-dim); margin-bottom:6px; }
   .field input, .field select, .field textarea{
@@ -411,7 +410,6 @@
           <h2>Leads</h2>
         </div>
         <div style="display:flex; align-items:center; gap:16px;">
-          <button class="btn ghost" id="mobile-filter-btn" title="Show only leads with a UK mobile number">Mobile Only</button>
           <div class="mg-pill" id="mg-pill" style="display:none;">
             <span class="mg-pulse-dot"></span>
             <span id="mg-pill-text">Mini GALAXY active</span>
@@ -1041,41 +1039,13 @@ function renderBoard(boardSelector, leadsList, showCorpButton){
   });
 }
 
-function isMobileNumber(phone){
-  if(!phone) return false;
-  let digits = phone.replace(/[^\d]/g, '');
-  // Strip up to a few leading junk digits (0s and 4s from whichever
-  // country-code/trunk-prefix formatting the source data happened to
-  // use) until we hit the real mobile-indicating 7, or give up.
-  for(let i = 0; i < 3 && digits.length && digits[0] !== '7'; i++){
-    if(digits[0] === '0' || digits[0] === '4'){
-      digits = digits.slice(1);
-    } else {
-      break;
-    }
-  }
-  return digits.startsWith('7');
-}
-
-let mobileOnlyFilter = false;
-
 function render(){
-  let items = leads.filter(l => !l.is_corporate);
-  if(mobileOnlyFilter) items = items.filter(l => isMobileNumber(l.phone));
-  renderBoard('#board', items, true);
+  renderBoard('#board', leads.filter(l => !l.is_corporate), true);
 }
 
 function renderCorporate(){
   renderBoard('#corp-board', leads.filter(l => l.is_corporate), false);
 }
-
-document.getElementById('mobile-filter-btn').addEventListener('click', () => {
-  mobileOnlyFilter = !mobileOnlyFilter;
-  const btn = document.getElementById('mobile-filter-btn');
-  btn.classList.toggle('active-filter', mobileOnlyFilter);
-  btn.textContent = mobileOnlyFilter ? 'Mobile Only ✓' : 'Mobile Only';
-  render();
-});
 
 function wireBoardDragDrop(boardSelector, corporateOnly){
   document.querySelectorAll(boardSelector + ' .cards').forEach(col => {
@@ -1125,7 +1095,6 @@ function renderFocusList(){
   const stage = FOCUS_STAGES[focusStageIndex];
   document.getElementById('focus-title').textContent = FOCUS_LABELS[stage] + (focusIsCorporate ? ' — Corporate' : '');
   let items = leads.filter(l => l.stage === stage && !!l.is_corporate === focusIsCorporate);
-  if(!focusIsCorporate && mobileOnlyFilter) items = items.filter(l => isMobileNumber(l.phone));
   const listEl = document.getElementById('focus-list');
   listEl.innerHTML = '';
   if(!items.length){
