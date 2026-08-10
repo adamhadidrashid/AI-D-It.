@@ -124,6 +124,13 @@
   .call-card-actions button:hover{ border-color:var(--ember); color:var(--ember); }
   .call-card-actions button.danger:hover{ border-color:var(--blood); color:var(--blood); }
   .call-outcome-tag{ font-size:11px; color:var(--mg-amber); margin-top:4px; }
+  .website-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .website-row span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .website-go-btn{
+    flex-shrink:0; width:20px; height:20px; display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--hair); color:var(--bone-dim); text-decoration:none; font-size:12px;
+  }
+  .website-go-btn:hover{ border-color:var(--ember); color:var(--ember); }
   .column{ background:var(--void-2); border:1px solid var(--hair); height:calc(100vh - 300px); min-height:300px; display:flex; flex-direction:column; }
   .column-head{ padding:14px 16px; border-bottom:1px solid var(--hair); display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; }
   .column[data-stage="new"] .column-head{ color:var(--ember); }
@@ -922,12 +929,14 @@ function render(){
         '<div class="biz">' + escapeHtml(lead.biz) + '</div>' +
         (lead.contact ? '<div class="meta">' + escapeHtml(lead.contact) + '</div>' : '') +
         (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
-        (lead.website ? '<div class="meta">' + escapeHtml(lead.website) + '</div>' : '') +
+        (lead.website ? '<div class="meta website-row"><span>' + escapeHtml(lead.website) + '</span><a class="website-go-btn" href="' + escapeHtml(lead.website.startsWith('http') ? lead.website : 'https://' + lead.website) + '" target="_blank" rel="noopener noreferrer" title="Open website">&#8599;</a></div>' : '') +
         '<span class="src">' + escapeHtml(lead.source || '') + '</span>';
       if(lead.call_outcome){
         inner += '<div class="call-outcome-tag">' + escapeHtml(lead.call_outcome) + '</div>';
       }
       card.innerHTML = inner;
+      const websiteBtn = card.querySelector('.website-go-btn');
+      if(websiteBtn) websiteBtn.addEventListener('click', e => e.stopPropagation());
 
       const actions = document.createElement('div');
       actions.className = 'call-card-actions';
