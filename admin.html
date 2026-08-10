@@ -1043,8 +1043,18 @@ function renderBoard(boardSelector, leadsList, showCorpButton){
 
 function isMobileNumber(phone){
   if(!phone) return false;
-  const digits = phone.replace(/[^\d+]/g, '');
-  return digits.startsWith('07') || digits.startsWith('+447') || digits.startsWith('447');
+  let digits = phone.replace(/[^\d]/g, '');
+  // Strip up to a few leading junk digits (0s and 4s from whichever
+  // country-code/trunk-prefix formatting the source data happened to
+  // use) until we hit the real mobile-indicating 7, or give up.
+  for(let i = 0; i < 3 && digits.length && digits[0] !== '7'; i++){
+    if(digits[0] === '0' || digits[0] === '4'){
+      digits = digits.slice(1);
+    } else {
+      break;
+    }
+  }
+  return digits.startsWith('7');
 }
 
 let mobileOnlyFilter = false;
