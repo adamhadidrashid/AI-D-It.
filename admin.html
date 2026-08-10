@@ -1134,6 +1134,17 @@ document.getElementById('lead-activity-add').addEventListener('click', async () 
   const input = document.getElementById('lead-activity-input');
   const note = input.value.trim();
   if(!note || !editingId) return;
+
+  if(note.toLowerCase() === 'corporate'){
+    input.value = '';
+    try{
+      await sbClient.from('lead_activity').insert({ lead_id: editingId, note: 'Moved to Corporate' });
+    }catch(err){ console.error('Failed to log move-to-corporate note:', err); }
+    await moveToCorporate(editingId);
+    document.getElementById('modal-backdrop').classList.remove('open');
+    return;
+  }
+
   try{
     await sbClient.from('lead_activity').insert({ lead_id: editingId, note });
     input.value = '';
