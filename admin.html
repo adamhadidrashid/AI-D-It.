@@ -607,7 +607,12 @@
   <div class="modal" style="max-width:480px;">
     <h2>Ready to call</h2>
     <p style="color:var(--bone-dim); font-size:13px; margin-top:-6px;">Businesses with a phone number, file built, ready to push to your main Leads list.</p>
+    <div class="field">
+      <label>How many to push? (max 100)</label>
+      <input type="number" id="mg-push-count" min="1" max="100" value="25">
+    </div>
     <div id="mg-push-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:1px; background:var(--hair); border:1px solid var(--hair);"></div>
+    <div id="mg-push-status" style="font-size:12px; color:var(--bone-dim); margin-top:8px;"></div>
     <div class="modal-actions">
       <div style="display:flex; gap:10px; margin-left:auto;">
         <button class="btn ghost" id="mg-push-cancel-btn">Close</button>
@@ -1194,7 +1199,13 @@ document.getElementById('mg-draft-copy-btn').addEventListener('click', async () 
 
 function mgOpenPushModal(){
   const listEl = document.getElementById('mg-push-list');
+  const statusEl = document.getElementById('mg-push-status');
+  statusEl.textContent = '';
   const callable = mgCallableLeads();
+  const countInput = document.getElementById('mg-push-count');
+  const cap = Math.min(100, callable.length || 1);
+  countInput.max = cap;
+  countInput.value = cap;
   listEl.innerHTML = '';
   if(!callable.length){
     listEl.innerHTML = '<div class="mg-list-empty">Nothing ready to push yet</div>';
@@ -1220,57 +1231,67 @@ document.getElementById('mg-push-modal-backdrop').addEventListener('click', e =>
 });
 
 document.getElementById('mg-push-confirm-btn').addEventListener('click', async () => {
-  const callable = mgCallableLeads();
-  if(!callable.length){
+  const statusEl = document.getElementById('mg-push-status');
+  const allCallable = mgCallableLeads();
+  if(!allCallable.length){
     document.getElementById('mg-push-modal-backdrop').classList.remove('open');
     return;
   }
-  try{
-    const rows = callable.map(lead => ({
-      biz: lead.name,
-      contact: '',
-      phone: lead.phone,
-      source: 'Mini GALAXY',
-      notes: lead.town ? `Found by SCOUT in ${lead.town}` : 'Found by SCOUT',
-      stage: 'new'
-    }));
-    await sbClient.from('leads').upsert(rows, { onConflict: 'biz,source', ignoreDuplicates: true });
+  let count = parseInt(document.getElementById('mg-push-count').value, 10) || 1;
+  count = Math.max(1, Math.min(100, count, allCallable.length));
+  const callable = allCallable.slice(0, count);
 
-    // Find the resulting main-lead IDs (works whether just-inserted or
-    // already existed), so we can carry the CRM history over to where
-    // it's actually meant to live long-term — the main Leads list, not
-    // Mini GALAXY's working file.
-    const bizNames = callable.map(l => l.name);
-    const { data: mainMatches } = await sbClient.from('leads').select('id,biz').eq('source', 'Mini GALAXY').in('biz', bizNames);
-    const idByBiz = {};
-    (mainMatches || []).forEach(r => { idByBiz[r.biz] = r.id; });
+  statusEl.textContent = 'Pushing 0 of ' + callable.length + '...';
+  let succeeded = 0, failed = 0;
 
-    for(const lead of callable){
-      const mainLeadId = idByBiz[lead.name];
-      if(!mainLeadId) continue;
-      try{
-        const actRes = await fetch(MG_WORKER_URL + '/leads/' + lead.id + '/activity');
-        const activity = actRes.ok ? await actRes.json() : [];
-        for(const entry of activity){
-          await sbClient.from('lead_activity').insert({ lead_id: mainLeadId, note: '[Mini GALAXY] ' + entry.note });
-        }
-      }catch(actErr){ console.error('Activity carry-over failed for', lead.name, actErr); }
+  for(const lead of callable){
+    try{
+      const { error: upsertErr } = await sbClient.from('leads').upsert({
+        biz: lead.name,
+        contact: '',
+        phone: lead.phone,
+        source: 'Mini GALAXY',
+        notes: lead.town ? `Found by SCOUT in ${lead.town}` : 'Found by SCOUT',
+        stage: 'new'
+      }, { onConflict: 'biz,source', ignoreDuplicates: true });
+
+      if(upsertErr){
+        console.error('Push failed for', lead.name, upsertErr);
+        failed++;
+        continue;
+      }
+
+      // ignoreDuplicates never overwrites a lead you've already progressed —
+      // this lookup just finds its id either way, new or pre-existing.
+      const { data: found } = await sbClient.from('leads').select('id').eq('biz', lead.name).eq('source', 'Mini GALAXY').maybeSingle();
+      const mainLeadId = found ? found.id : null;
+      if(mainLeadId){
+        try{
+          const actRes = await fetch(MG_WORKER_URL + '/leads/' + lead.id + '/activity');
+          const activity = actRes.ok ? await actRes.json() : [];
+          for(const entry of activity){
+            await sbClient.from('lead_activity').insert({ lead_id: mainLeadId, note: '[Mini GALAXY] ' + entry.note });
+          }
+        }catch(actErr){ console.error('Activity carry-over failed for', lead.name, actErr); }
+      }
 
       await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
         method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pushed_to_main: true })
       });
+      succeeded++;
+    }catch(err){
+      console.error('Push failed for', lead.name, err);
+      failed++;
     }
-
-    await loadLeads();
-    render();
-    await mgLoadLeads();
-    mgRender();
-    updateMgPill();
-    document.getElementById('mg-push-modal-backdrop').classList.remove('open');
-  }catch(err){
-    console.error('Push to Leads List failed:', err);
-    alert('Something went wrong pushing these leads — check the console.');
+    statusEl.textContent = 'Pushing ' + (succeeded + failed) + ' of ' + callable.length + '... (' + succeeded + ' ok, ' + failed + ' failed)';
   }
+
+  await loadLeads();
+  render();
+  await mgLoadLeads();
+  mgRender();
+  updateMgPill();
+  statusEl.textContent = 'Done — ' + succeeded + ' pushed' + (failed ? ', ' + failed + ' failed (see console)' : '') + '.';
 });
 
 let mgFilter = 'all';
