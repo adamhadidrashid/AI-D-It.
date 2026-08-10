@@ -873,6 +873,8 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
+const RENDER_CAP = 200;
+
 function render(){
   document.querySelectorAll('#board .cards').forEach(col => col.innerHTML = '');
   const stages = ['new','contacted','audit','won','lost'];
@@ -887,7 +889,19 @@ function render(){
       col.appendChild(hint);
       return;
     }
-    items.forEach(lead => {
+    // Only render the most recent RENDER_CAP as actual cards — with
+    // thousands of leads, building a DOM node for every single one
+    // is what was freezing the page. The count above still shows the
+    // real total either way.
+    const toRender = items.length > RENDER_CAP ? items.slice(-RENDER_CAP) : items;
+    if(items.length > RENDER_CAP){
+      const notice = document.createElement('div');
+      notice.className = 'empty-hint';
+      notice.style.padding = '10px';
+      notice.textContent = 'Showing the ' + RENDER_CAP + ' most recent of ' + items.length + ' — filtering coming soon';
+      col.appendChild(notice);
+    }
+    toRender.forEach(lead => {
       const card = document.createElement('div');
       card.className = 'card';
       card.draggable = true;
@@ -944,7 +958,15 @@ function renderCallQueue(){
       col.appendChild(hint);
       return;
     }
-    items.forEach(lead => {
+    const toRender = items.length > RENDER_CAP ? items.slice(-RENDER_CAP) : items;
+    if(items.length > RENDER_CAP){
+      const notice = document.createElement('div');
+      notice.className = 'empty-hint';
+      notice.style.padding = '10px';
+      notice.textContent = 'Showing the ' + RENDER_CAP + ' most recent of ' + items.length + ' — filtering coming soon';
+      col.appendChild(notice);
+    }
+    toRender.forEach(lead => {
       const card = document.createElement('div');
       card.className = 'card';
       card.dataset.id = lead.id;
