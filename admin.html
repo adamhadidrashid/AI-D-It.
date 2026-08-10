@@ -112,11 +112,10 @@
   .view{ padding:24px 26px; flex:1; }
 
   /* ---- leads board (same as tracker, reused) ---- */
-  .board{ display:grid; grid-template-columns:repeat(5, minmax(200px, 1fr)); gap:14px; overflow-x:auto; }
+  .board{ display:grid; grid-template-columns:repeat(7, minmax(190px, 1fr)); gap:12px; overflow-x:auto; }
+  @media (max-width:1400px){ .board{ grid-template-columns:repeat(7, minmax(190px, 1fr)); } }
   @media (max-width:900px){ .board{ grid-template-columns:1fr; } }
 
-  .call-queue-section{ margin-top:44px; padding-top:28px; border-top:1px solid var(--hair); }
-  #call-board{ grid-template-columns:repeat(4, minmax(200px, 1fr)); }
   .call-card-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .call-card-actions button{
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.03em; text-transform:uppercase;
@@ -128,6 +127,8 @@
   .column{ background:var(--void-2); border:1px solid var(--hair); min-height:180px; display:flex; flex-direction:column; }
   .column-head{ padding:14px 16px; border-bottom:1px solid var(--hair); display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; }
   .column[data-stage="new"] .column-head{ color:var(--ember); }
+  .column[data-stage="calling"] .column-head{ color:var(--mg-sapphire); }
+  .column[data-stage="callback"] .column-head{ color:var(--mg-amber); }
   .column[data-stage="contacted"] .column-head{ color:var(--violet); }
   .column[data-stage="audit"] .column-head{ color:var(--blood); }
   .column[data-stage="won"] .column-head{ color:#4ee08a; }
@@ -406,20 +407,12 @@
       </div>
       <div class="board" id="board">
         <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
+        <div class="column" data-stage="calling"><div class="column-head"><span>Calling</span><span class="count">0</span></div><div class="cards" data-stage="calling"></div></div>
+        <div class="column" data-stage="callback"><div class="column-head"><span>Call Back</span><span class="count">0</span></div><div class="cards" data-stage="callback"></div></div>
         <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
-        <div class="column" data-stage="audit"><div class="column-head"><span>Audit Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
+        <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
-        <div class="column" data-stage="lost"><div class="column-head"><span>Lost</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
-      </div>
-
-      <div class="call-queue-section">
-        <div class="view-head"><h2>Call Queue</h2></div>
-        <div class="board" id="call-board">
-          <div class="column" data-callstage="to_call"><div class="column-head"><span>To Call</span><span class="count">0</span></div><div class="cards" data-callstage="to_call"></div></div>
-          <div class="column" data-callstage="in_progress"><div class="column-head"><span>In Progress</span><span class="count">0</span></div><div class="cards" data-callstage="in_progress"></div></div>
-          <div class="column" data-callstage="needs_second_call"><div class="column-head"><span>Needs Second Call</span><span class="count">0</span></div><div class="cards" data-callstage="needs_second_call"></div></div>
-          <div class="column" data-callstage="called"><div class="column-head"><span>Called</span><span class="count">0</span></div><div class="cards" data-callstage="called"></div></div>
-        </div>
+        <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
       </div>
     </div>
 
@@ -753,7 +746,6 @@ document.getElementById('wipe-btn').addEventListener('click', async () => {
     await fetch(MG_WORKER_URL + '/wipe', { method: 'POST' });
     await loadLeads();
     render();
-    renderCallQueue();
     await mgLoadLeads();
     mgRender();
     updateMgPill();
@@ -834,7 +826,6 @@ async function enterDashboard(){
   document.querySelector('.back-link').style.display = 'none';
   await loadLeads();
   render();
-  renderCallQueue();
   await mgLoadLeads();
   mgRender();
   updateMgPill();
@@ -875,9 +866,19 @@ function escapeHtml(str){
 
 const RENDER_CAP = 200;
 
+async function moveLeadStage(id, stage, outcome){
+  const lead = leads.find(l => l.id === id);
+  if(!lead) return;
+  lead.stage = stage;
+  if(outcome !== undefined) lead.call_outcome = outcome;
+  const patch = outcome !== undefined ? { stage, call_outcome: outcome } : { stage };
+  await sbClient.from('leads').update(patch).eq('id', id);
+  render();
+}
+
 function render(){
   document.querySelectorAll('#board .cards').forEach(col => col.innerHTML = '');
-  const stages = ['new','contacted','audit','won','lost'];
+  const stages = ['new','calling','callback','contacted','audit','won','lost'];
   stages.forEach(stage => {
     const items = leads.filter(l => l.stage === stage);
     const col = document.querySelector('.cards[data-stage="'+stage+'"]');
@@ -906,11 +907,50 @@ function render(){
       card.className = 'card';
       card.draggable = true;
       card.dataset.id = lead.id;
-      card.innerHTML =
+      let inner =
         '<div class="biz">' + escapeHtml(lead.biz) + '</div>' +
         (lead.contact ? '<div class="meta">' + escapeHtml(lead.contact) + '</div>' : '') +
         (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
         '<span class="src">' + escapeHtml(lead.source || '') + '</span>';
+      if(lead.call_outcome){
+        inner += '<div class="call-outcome-tag">' + escapeHtml(lead.call_outcome) + '</div>';
+      }
+      card.innerHTML = inner;
+
+      const actions = document.createElement('div');
+      actions.className = 'call-card-actions';
+
+      if(stage === 'new'){
+        const startBtn = document.createElement('button');
+        startBtn.textContent = 'Start';
+        startBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'calling'); });
+        actions.appendChild(startBtn);
+      } else if(stage === 'calling' || stage === 'callback'){
+        // Outcome tags (just label why, don't move on their own)
+        [['Answering Machine','Answering machine'],['Hung Up','Hung up'],['Not Interested','Not interested']].forEach(([label, tag]) => {
+          const b = document.createElement('button');
+          b.textContent = label;
+          b.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, stage, tag); });
+          actions.appendChild(b);
+        });
+        // Destination choices — full manual control over where it goes next
+        const sep = document.createElement('div');
+        sep.style.cssText = 'width:100%; height:1px; background:var(--hair); margin:4px 0;';
+        actions.appendChild(sep);
+        const binBtn = document.createElement('button');
+        binBtn.className = 'danger';
+        binBtn.textContent = 'Bin';
+        binBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'lost'); });
+        const cbBtn = document.createElement('button');
+        cbBtn.textContent = 'Call Back List';
+        cbBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'callback'); });
+        const apptBtn = document.createElement('button');
+        apptBtn.textContent = 'Appt Booked';
+        apptBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'audit'); });
+        actions.append(binBtn, cbBtn, apptBtn);
+      }
+
+      if(actions.children.length) card.appendChild(actions);
       card.addEventListener('click', () => openModal(lead.id));
       card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', lead.id));
       col.appendChild(card);
@@ -930,92 +970,9 @@ document.querySelectorAll('#board .cards').forEach(col => {
       lead.stage = col.dataset.stage;
       await sbClient.from('leads').update({ stage: lead.stage }).eq('id', id);
       render();
-      renderCallQueue();
     }
   });
 });
-
-async function setCallStatus(id, call_status, call_outcome){
-  const lead = leads.find(l => l.id === id);
-  if(!lead) return;
-  lead.call_status = call_status;
-  lead.call_outcome = call_outcome || null;
-  await sbClient.from('leads').update({ call_status, call_outcome: call_outcome || null }).eq('id', id);
-  renderCallQueue();
-}
-
-function renderCallQueue(){
-  document.querySelectorAll('#call-board .cards').forEach(col => col.innerHTML = '');
-  const stages = ['to_call','in_progress','needs_second_call','called'];
-  stages.forEach(stage => {
-    const items = leads.filter(l => (l.call_status || 'to_call') === stage);
-    const col = document.querySelector('#call-board .cards[data-callstage="'+stage+'"]');
-    document.querySelector('#call-board .column[data-callstage="'+stage+'"] .count').textContent = items.length;
-    if(items.length === 0){
-      const hint = document.createElement('div');
-      hint.className = 'empty-hint';
-      hint.textContent = 'Nothing here';
-      col.appendChild(hint);
-      return;
-    }
-    const toRender = items.length > RENDER_CAP ? items.slice(-RENDER_CAP) : items;
-    if(items.length > RENDER_CAP){
-      const notice = document.createElement('div');
-      notice.className = 'empty-hint';
-      notice.style.padding = '10px';
-      notice.textContent = 'Showing the ' + RENDER_CAP + ' most recent of ' + items.length + ' — filtering coming soon';
-      col.appendChild(notice);
-    }
-    toRender.forEach(lead => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.dataset.id = lead.id;
-
-      let inner =
-        '<div class="biz">' + escapeHtml(lead.biz) + '</div>' +
-        (lead.contact ? '<div class="meta">' + escapeHtml(lead.contact) + '</div>' : '') +
-        (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '');
-      if(lead.call_outcome){
-        inner += '<div class="call-outcome-tag">' + escapeHtml(lead.call_outcome) + '</div>';
-      }
-      card.innerHTML = inner;
-
-      const actions = document.createElement('div');
-      actions.className = 'call-card-actions';
-
-      if(stage === 'to_call'){
-        const startBtn = document.createElement('button');
-        startBtn.textContent = 'Start';
-        startBtn.addEventListener('click', e => { e.stopPropagation(); setCallStatus(lead.id, 'in_progress'); });
-        actions.appendChild(startBtn);
-      } else if(stage === 'in_progress'){
-        const calledBtn = document.createElement('button');
-        calledBtn.textContent = 'Called';
-        calledBtn.addEventListener('click', e => { e.stopPropagation(); setCallStatus(lead.id, 'called'); });
-        const hungUpBtn = document.createElement('button');
-        hungUpBtn.className = 'danger';
-        hungUpBtn.textContent = 'Hung Up';
-        hungUpBtn.addEventListener('click', e => { e.stopPropagation(); setCallStatus(lead.id, 'needs_second_call', 'Hung up'); });
-        const machineBtn = document.createElement('button');
-        machineBtn.textContent = 'Answering Machine';
-        machineBtn.addEventListener('click', e => { e.stopPropagation(); setCallStatus(lead.id, 'needs_second_call', 'Answering machine'); });
-        actions.append(calledBtn, hungUpBtn, machineBtn);
-      } else if(stage === 'needs_second_call'){
-        const tryAgainBtn = document.createElement('button');
-        tryAgainBtn.textContent = 'Try Again';
-        tryAgainBtn.addEventListener('click', e => { e.stopPropagation(); setCallStatus(lead.id, 'in_progress'); });
-        const calledBtn = document.createElement('button');
-        calledBtn.textContent = 'Called';
-        calledBtn.addEventListener('click', e => { e.stopPropagation(); setCallStatus(lead.id, 'called'); });
-        actions.append(tryAgainBtn, calledBtn);
-      }
-
-      if(actions.children.length) card.appendChild(actions);
-      card.addEventListener('click', () => openModal(lead.id));
-      col.appendChild(card);
-    });
-  });
-}
 
 function openModal(id){
   const deleteBtn = document.getElementById('delete-lead-btn');
@@ -1106,7 +1063,6 @@ document.getElementById('save-lead-btn').addEventListener('click', async () => {
     }
   }
   render();
-  renderCallQueue();
   closeModal();
 });
 
@@ -1115,7 +1071,6 @@ document.getElementById('delete-lead-btn').addEventListener('click', async () =>
     await sbClient.from('leads').delete().eq('id', editingId);
     leads = leads.filter(l => l.id !== editingId);
     render();
-    renderCallQueue();
     closeModal();
   }
 });
@@ -1303,7 +1258,6 @@ document.getElementById('mg-push-confirm-btn').addEventListener('click', async (
 
     await loadLeads();
     render();
-    renderCallQueue();
     await mgLoadLeads();
     mgRender();
     updateMgPill();
