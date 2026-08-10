@@ -191,13 +191,12 @@
 
   /* ---------- Living sphere agent, fixed bottom-left of the whole app ---------- */
   #mg-living-sphere-wrap{
-    position:fixed; bottom:70px; left:250px; z-index:150;
-    display:flex; flex-direction:column; align-items:center; gap:6px;
-    cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    cursor:pointer; margin:36px auto 0; width:fit-content;
   }
-  #mg-living-sphere{ width:150px; height:150px; }
+  #mg-living-sphere{ width:220px; height:220px; }
   #mg-living-sphere-label{
-    font-family:'Big Shoulders Display', sans-serif; font-size:15px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+    font-family:'Big Shoulders Display', sans-serif; font-size:17px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
     color:var(--mg-turquoise); text-shadow:0 0 10px rgba(62,217,201,0.6);
     transition:opacity .6s ease, color .6s ease, text-shadow .6s ease;
   }
@@ -208,7 +207,6 @@
   #mg-living-sphere-wrap.mg-sphere-dim #mg-living-sphere-label{
     opacity:0.35; color:var(--bone-dim); text-shadow:none;
   }
-  @media (max-width:720px){ #mg-living-sphere-wrap{ left:22px; } }
 
   /* ---------- Mini GALAXY map view (its own visual identity) ---------- */
   :root{
@@ -415,6 +413,11 @@
         <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
+      </div>
+
+      <div id="mg-living-sphere-wrap">
+        <canvas id="mg-living-sphere"></canvas>
+        <div id="mg-living-sphere-label">Mini Galaxy <span id="mg-sphere-badge" style="display:none;"></span></div>
       </div>
     </div>
 
@@ -1495,10 +1498,6 @@ document.getElementById('mg-delete-btn').addEventListener('click', async () => {
 boot();
 </script>
 
-<div id="mg-living-sphere-wrap">
-  <canvas id="mg-living-sphere"></canvas>
-  <div id="mg-living-sphere-label">Mini Galaxy <span id="mg-sphere-badge" style="display:none;"></span></div>
-</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 try{
