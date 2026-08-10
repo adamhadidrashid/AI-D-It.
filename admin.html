@@ -90,6 +90,12 @@
   .tab-dot.dot-leads{ background:var(--ember); box-shadow:0 0 6px var(--ember); }
   .tab-dot.dot-corporate{ background:#e0a63f; box-shadow:0 0 6px #e0a63f; }
   .tab-dot.dot-mg{ background:#3ed9c9; box-shadow:0 0 6px #3ed9c9; }
+  .bin-clear-btn{
+    background:transparent; border:1px solid var(--hair); color:var(--bone-dim);
+    width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+    font-size:11px; cursor:pointer; border-radius:2px;
+  }
+  .bin-clear-btn:hover{ border-color:var(--blood); color:var(--blood); }
 
   .main-col{ flex:1; display:flex; flex-direction:column; min-width:0; }
   .topbar{
@@ -116,7 +122,7 @@
   .view{ padding:24px 26px; flex:1; }
 
   /* ---- leads board (same as tracker, reused) ---- */
-  .board{ display:grid; grid-template-columns:repeat(7, minmax(190px, 1fr)); gap:12px; overflow-x:auto; }
+  .board{ display:grid; grid-template-columns:repeat(7, minmax(190px, 1fr)); gap:12px; overflow-x:auto; padding-right:26px; }
   @media (max-width:1400px){ .board{ grid-template-columns:repeat(7, minmax(190px, 1fr)); } }
   @media (max-width:900px){ .board{ grid-template-columns:1fr; } }
 
@@ -417,7 +423,7 @@
         <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
         <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
-        <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
+        <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span style="display:flex; align-items:center; gap:8px;"><span class="count">0</span><button class="bin-clear-btn" id="bin-clear-main" title="Permanently delete everything in the Bin">&#128465;</button></span></div><div class="cards" data-stage="lost"></div></div>
       </div>
 
       <div id="mg-living-sphere-wrap">
@@ -437,7 +443,7 @@
         <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
         <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
-        <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span class="count">0</span></div><div class="cards" data-stage="lost"></div></div>
+        <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span style="display:flex; align-items:center; gap:8px;"><span class="count">0</span><button class="bin-clear-btn" id="bin-clear-corp" title="Permanently delete everything in the Bin">&#128465;</button></span></div><div class="cards" data-stage="lost"></div></div>
       </div>
     </div>
 
@@ -1044,6 +1050,23 @@ function wireBoardDragDrop(boardSelector, corporateOnly){
 }
 wireBoardDragDrop('#board');
 wireBoardDragDrop('#corp-board');
+
+async function clearBin(isCorporate){
+  const toDelete = leads.filter(l => l.stage === 'lost' && !!l.is_corporate === isCorporate);
+  if(!toDelete.length){
+    alert('Bin is already empty.');
+    return;
+  }
+  const confirmed = confirm('Permanently delete all ' + toDelete.length + ' lead' + (toDelete.length === 1 ? '' : 's') + ' in the Bin? This cannot be undone and they will not come back.');
+  if(!confirmed) return;
+  const ids = toDelete.map(l => l.id);
+  await sbClient.from('leads').delete().in('id', ids);
+  leads = leads.filter(l => !ids.includes(l.id));
+  render();
+  renderCorporate();
+}
+document.getElementById('bin-clear-main').addEventListener('click', e => { e.stopPropagation(); clearBin(false); });
+document.getElementById('bin-clear-corp').addEventListener('click', e => { e.stopPropagation(); clearBin(true); });
 
 function openModal(id){
   const deleteBtn = document.getElementById('delete-lead-btn');
