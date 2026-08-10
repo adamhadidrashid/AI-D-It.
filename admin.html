@@ -135,7 +135,8 @@
   .call-card-actions button.danger:hover{ border-color:var(--blood); color:var(--blood); }
   .call-outcome-tag{ font-size:11px; color:var(--mg-amber); margin-top:4px; }
   .column{ background:var(--void-2); border:1px solid var(--hair); height:calc(100vh - 300px); min-height:300px; display:flex; flex-direction:column; }
-  .column-head{ padding:14px 16px; border-bottom:1px solid var(--hair); display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; }
+  .column-head{ padding:14px 16px; border-bottom:1px solid var(--hair); display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; }
+  .column-head:hover{ background:rgba(255,255,255,0.03); }
   .column[data-stage="new"] .column-head{ color:var(--ember); }
   .column[data-stage="calling"] .column-head{ color:var(--mg-sapphire); }
   .column[data-stage="callback"] .column-head{ color:var(--mg-amber); }
@@ -147,10 +148,10 @@
   .cards::-webkit-scrollbar{ width:6px; }
   .cards::-webkit-scrollbar-thumb{ background:var(--hair); }
   .cards.drag-over{ background:rgba(46,230,255,0.05); }
-  .card{ background:var(--card); border:1px solid var(--hair); padding:12px 14px; cursor:grab; transition:border-color .15s; }
+  .card{ background:var(--card); border:1px solid var(--hair); padding:12px 14px; cursor:grab; transition:border-color .15s; overflow:hidden; }
   .card:hover{ border-color:var(--ember); }
-  .card .biz{ font-family:'Big Shoulders Display', sans-serif; font-weight:600; font-size:16px; text-transform:uppercase; }
-  .card .meta{ font-size:12px; color:var(--bone-dim); margin-top:4px; }
+  .card .biz{ font-family:'Big Shoulders Display', sans-serif; font-weight:600; font-size:16px; text-transform:uppercase; overflow-wrap:break-word; word-break:break-word; }
+  .card .meta{ font-size:12px; color:var(--bone-dim); margin-top:4px; overflow-wrap:break-word; word-break:break-word; }
   .card .src{ display:inline-block; margin-top:8px; font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.08em; color:var(--steel); text-transform:uppercase; border:1px solid var(--steel); padding:2px 6px; }
   .empty-hint{ padding:20px 12px; color:var(--steel); font-size:12px; text-align:center; }
 
@@ -655,6 +656,22 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="focus-modal-backdrop">
+  <div class="modal" style="max-width:640px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <button class="btn ghost" id="focus-prev-btn" style="padding:8px 14px;">&#8592;</button>
+      <h2 id="focus-title" style="margin:0;">New</h2>
+      <button class="btn ghost" id="focus-next-btn" style="padding:8px 14px;">&#8594;</button>
+    </div>
+    <div id="focus-list" style="max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:1px; background:var(--hair); border:1px solid var(--hair); margin-top:14px;"></div>
+    <div class="modal-actions">
+      <div style="margin-left:auto;">
+        <button class="btn ghost" id="focus-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="mg-draft-modal-backdrop">
   <div class="modal" style="max-width:520px;">
     <h2 id="mg-draft-modal-title">Create Draft</h2>
@@ -1067,6 +1084,68 @@ async function clearBin(isCorporate){
 }
 document.getElementById('bin-clear-main').addEventListener('click', e => { e.stopPropagation(); clearBin(false); });
 document.getElementById('bin-clear-corp').addEventListener('click', e => { e.stopPropagation(); clearBin(true); });
+
+// ---- Focused single-stage view (click a column header) ----
+const FOCUS_STAGES = ['new','calling','callback','contacted','audit','won','lost'];
+const FOCUS_LABELS = { new:'New', calling:'Calling', callback:'Call Back', contacted:'Contacted', audit:'Appt Booked', won:'Won', lost:'Bin' };
+let focusStageIndex = 0;
+let focusIsCorporate = false;
+
+function renderFocusList(){
+  const stage = FOCUS_STAGES[focusStageIndex];
+  document.getElementById('focus-title').textContent = FOCUS_LABELS[stage] + (focusIsCorporate ? ' — Corporate' : '');
+  const items = leads.filter(l => l.stage === stage && !!l.is_corporate === focusIsCorporate);
+  const listEl = document.getElementById('focus-list');
+  listEl.innerHTML = '';
+  if(!items.length){
+    listEl.innerHTML = '<div class="mg-list-empty">No leads here</div>';
+    return;
+  }
+  items.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'mg-list-row';
+    row.innerHTML =
+      '<div><div class="mg-list-name">' + escapeHtml(lead.biz) + '</div>' +
+      '<div class="mg-list-meta">' + [lead.contact, lead.phone, lead.website].filter(Boolean).map(escapeHtml).join(' · ') + '</div></div>' +
+      '<div class="mg-list-meta">' + escapeHtml(lead.source || '') + '</div>';
+    row.addEventListener('click', () => {
+      document.getElementById('focus-modal-backdrop').classList.remove('open');
+      openModal(lead.id);
+    });
+    listEl.appendChild(row);
+  });
+}
+
+function openFocusView(stage, isCorporate){
+  focusStageIndex = FOCUS_STAGES.indexOf(stage);
+  if(focusStageIndex < 0) focusStageIndex = 0;
+  focusIsCorporate = isCorporate;
+  renderFocusList();
+  document.getElementById('focus-modal-backdrop').classList.add('open');
+}
+
+document.querySelectorAll('#board .column-head, #corp-board .column-head').forEach(head => {
+  head.addEventListener('click', () => {
+    const column = head.closest('.column');
+    const board = head.closest('.board');
+    openFocusView(column.dataset.stage, board.id === 'corp-board');
+  });
+});
+
+document.getElementById('focus-prev-btn').addEventListener('click', () => {
+  focusStageIndex = (focusStageIndex - 1 + FOCUS_STAGES.length) % FOCUS_STAGES.length;
+  renderFocusList();
+});
+document.getElementById('focus-next-btn').addEventListener('click', () => {
+  focusStageIndex = (focusStageIndex + 1) % FOCUS_STAGES.length;
+  renderFocusList();
+});
+document.getElementById('focus-close-btn').addEventListener('click', () => {
+  document.getElementById('focus-modal-backdrop').classList.remove('open');
+});
+document.getElementById('focus-modal-backdrop').addEventListener('click', e => {
+  if(e.target.id === 'focus-modal-backdrop') document.getElementById('focus-modal-backdrop').classList.remove('open');
+});
 
 function openModal(id){
   const deleteBtn = document.getElementById('delete-lead-btn');
