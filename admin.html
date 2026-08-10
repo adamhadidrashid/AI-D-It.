@@ -539,6 +539,7 @@
     <div class="field"><label>Business name</label><input type="text" id="f-biz"></div>
     <div class="field"><label>Contact name</label><input type="text" id="f-contact"></div>
     <div class="field"><label>Phone / email</label><input type="text" id="f-phone"></div>
+    <div class="field"><label>Website</label><input type="text" id="f-website"></div>
     <div class="field"><label>Source</label>
       <select id="f-source">
         <option value="Cold approach">Cold approach</option>
@@ -863,7 +864,7 @@ async function loadLeads(){
   if(error){ console.error(error); leads = []; return; }
   leads = data.map(row => ({
     id: row.id, biz: row.biz, contact: row.contact, phone: row.phone,
-    source: row.source, notes: row.notes, stage: row.stage,
+    source: row.source, notes: row.notes, stage: row.stage, website: row.website,
     call_status: row.call_status, call_outcome: row.call_outcome
   }));
 }
@@ -921,6 +922,7 @@ function render(){
         '<div class="biz">' + escapeHtml(lead.biz) + '</div>' +
         (lead.contact ? '<div class="meta">' + escapeHtml(lead.contact) + '</div>' : '') +
         (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
+        (lead.website ? '<div class="meta">' + escapeHtml(lead.website) + '</div>' : '') +
         '<span class="src">' + escapeHtml(lead.source || '') + '</span>';
       if(lead.call_outcome){
         inner += '<div class="call-outcome-tag">' + escapeHtml(lead.call_outcome) + '</div>';
@@ -994,6 +996,7 @@ function openModal(id){
     document.getElementById('f-biz').value = lead.biz || '';
     document.getElementById('f-contact').value = lead.contact || '';
     document.getElementById('f-phone').value = lead.phone || '';
+    document.getElementById('f-website').value = lead.website || '';
     document.getElementById('f-source').value = lead.source || 'Cold approach';
     document.getElementById('f-notes').value = lead.notes || '';
     deleteBtn.style.display = 'inline-block';
@@ -1005,6 +1008,7 @@ function openModal(id){
     document.getElementById('f-biz').value = '';
     document.getElementById('f-contact').value = '';
     document.getElementById('f-phone').value = '';
+    document.getElementById('f-website').value = '';
     document.getElementById('f-source').value = 'Cold approach';
     document.getElementById('f-notes').value = '';
     deleteBtn.style.display = 'none';
@@ -1060,6 +1064,7 @@ document.getElementById('save-lead-btn').addEventListener('click', async () => {
     biz,
     contact: document.getElementById('f-contact').value.trim(),
     phone: document.getElementById('f-phone').value.trim(),
+    website: document.getElementById('f-website').value.trim(),
     source: document.getElementById('f-source').value,
     notes: document.getElementById('f-notes').value.trim()
   };
@@ -1250,6 +1255,7 @@ document.getElementById('mg-push-confirm-btn').addEventListener('click', async (
         biz: lead.name,
         contact: '',
         phone: lead.phone,
+        website: lead.website || null,
         source: 'Mini GALAXY',
         notes: lead.town ? `Found by SCOUT in ${lead.town}` : 'Found by SCOUT',
         stage: 'new'
