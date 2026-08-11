@@ -470,7 +470,7 @@
         <div class="mg-flow-track"></div>
         <span class="mg-flow-label">Forge</span>
         <div class="mg-flow-track"></div>
-        <span class="mg-flow-label">Dispatch</span>
+        <span class="mg-flow-label">Pending</span>
       </div>
 
       <div class="mg-map-wrap">
@@ -511,10 +511,10 @@
           <div class="mg-count-lbl">Active files</div>
         </div>
         <div class="mg-card mg-dispatch" data-filter="sent" data-role="dispatch">
-          <div class="mg-agent-name"><span class="mg-badge"></span>DISPATCH</div>
-          <div class="mg-role">Live sites, ready to pitch</div>
+          <div class="mg-agent-name"><span class="mg-badge"></span>PENDING</div>
+          <div class="mg-role">No mobile number found</div>
           <div class="mg-count" id="mg-count-dispatch">0</div>
-          <div class="mg-count-lbl">Sent</div>
+          <div class="mg-count-lbl">Awaiting triage</div>
         </div>
       </div>
 
@@ -1276,6 +1276,22 @@ document.getElementById('delete-lead-btn').addEventListener('click', async () =>
 // ---- Mini GALAXY (Cloudflare Worker-backed, separate from leads) ----
 // ==================================================================
 const MG_WORKER_URL = 'https://aiditworker.themarketinginninbox.workers.dev';
+
+// Same logic as the Worker's version — strip country-code/trunk-prefix
+// noise until we hit the real mobile-indicating 7.
+function isMobileNumber(phone){
+  if(!phone) return false;
+  let digits = phone.replace(/[^\d]/g, '');
+  for(let i = 0; i < 3 && digits.length && digits[0] !== '7'; i++){
+    if(digits[0] === '0' || digits[0] === '4'){
+      digits = digits.slice(1);
+    } else {
+      break;
+    }
+  }
+  return digits.startsWith('7');
+}
+
 let mgLeads = [];
 let mgEditingId = null;
 
@@ -1505,17 +1521,50 @@ function mgRender(){
   document.getElementById('mg-feed-scout').textContent = mgLeads.length ? `${latest(mgLeads)} found` : '—';
   document.getElementById('mg-feed-forge').textContent = queued.length ? `Building file: ${latest(queued)}` : 'Queue empty';
   document.getElementById('mg-feed-live').textContent = ready.length ? `${latest(ready)} — file active` : 'No active files yet';
-  document.getElementById('mg-feed-dispatch').textContent = sent.length ? `${latest(sent)} — sent` : 'Nothing sent yet';
+  document.getElementById('mg-feed-dispatch').textContent = sent.length ? `${latest(sent)} — pending` : 'Nothing pending yet';
 
   mgRenderList();
 }
 
 const MG_LIST_RENDER_CAP = 300;
 
+async function mgSendPendingToCorporate(lead){
+  try{
+    await sbClient.from('leads').upsert({
+      biz: lead.name,
+      contact: '',
+      phone: lead.phone || '',
+      website: lead.website || null,
+      source: 'Mini GALAXY',
+      notes: lead.town ? `Found by SCOUT in ${lead.town} — no mobile number` : 'Found by SCOUT — no mobile number',
+      stage: 'new',
+      is_corporate: true
+    }, { onConflict: 'biz,source', ignoreDuplicates: true });
+
+    await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' })
+    });
+    await mgLoadLeads();
+    mgRender();
+    updateMgPill();
+  }catch(err){ console.error('Send to Corporate failed:', err); }
+}
+
+async function mgBinPending(lead){
+  try{
+    await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' })
+    });
+    await mgLoadLeads();
+    mgRender();
+    updateMgPill();
+  }catch(err){ console.error('Bin failed:', err); }
+}
+
 function mgRenderList(){
   const list = document.getElementById('mg-list');
   const title = document.getElementById('mg-list-title');
-  const titles = { all:'All businesses', queued:'Forge — building files', ready:'Live — active business files', sent:'Dispatch — sent', rejected:'Rejected' };
+  const titles = { all:'All businesses', queued:'Forge — building files', ready:'Live — active business files', sent:'Pending — no mobile number', rejected:'Rejected' };
   title.textContent = titles[mgFilter] || 'All businesses';
 
   const items = mgFilter === 'all' ? mgLeads : mgLeads.filter(l => l.status === mgFilter);
@@ -1532,25 +1581,32 @@ function mgRenderList(){
     const row = document.createElement('div');
     row.className = 'mg-list-row';
     row.style.justifyContent = 'space-between';
-    const isDispatch = lead.status === 'sent';
+    const isPending = lead.status === 'sent';
     let rightHtml;
-    if(isDispatch){
-      rightHtml = lead.draft_created
-        ? '<span style="color:#4ee08a; font-family:\'IBM Plex Mono\', monospace; font-size:11px; letter-spacing:0.05em;">&#10003; Drafted</span>'
-        : '<button class="btn" style="padding:8px 14px; font-size:10px;" data-draft-id="' + lead.id + '">Create Draft</button>';
+    if(isPending){
+      rightHtml =
+        '<button class="btn ghost" style="padding:8px 14px; font-size:10px;" data-corp-id="' + lead.id + '">Corporate</button>' +
+        '<button class="btn danger" style="padding:8px 14px; font-size:10px;" data-bin-id="' + lead.id + '">Bin</button>';
     } else {
       rightHtml = '<div class="mg-list-meta">' + escapeHtml(lead.status) + (lead.live_url ? ' · live' : '') + '</div>';
     }
     row.innerHTML =
       '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
       '<div class="mg-list-meta">' + escapeHtml(lead.town || '') + (lead.phone ? ' · ' + escapeHtml(lead.phone) : '') + (lead.email ? ' · ' + escapeHtml(lead.email) : '') + (lead.website ? ' · ' + escapeHtml(lead.website) : '') + '</div></div>' +
-      '<div style="display:flex; align-items:center; gap:14px;">' + rightHtml + '</div>';
+      '<div style="display:flex; align-items:center; gap:8px;">' + rightHtml + '</div>';
     row.addEventListener('click', () => mgOpenModal(lead.id));
-    const draftBtn = row.querySelector('[data-draft-id]');
-    if(draftBtn){
-      draftBtn.addEventListener('click', (e) => {
+    const corpBtn = row.querySelector('[data-corp-id]');
+    if(corpBtn){
+      corpBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        mgOpenDraftModal(lead);
+        mgSendPendingToCorporate(lead);
+      });
+    }
+    const binBtn = row.querySelector('[data-bin-id]');
+    if(binBtn){
+      binBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mgBinPending(lead);
       });
     }
     list.appendChild(row);
@@ -1653,12 +1709,11 @@ document.getElementById('mg-save-btn').addEventListener('click', async () => {
   const phone = document.getElementById('mg-f-phone').value.trim();
   const email = document.getElementById('mg-f-email').value.trim();
 
-  // The simple funnel: LIVE ("ready") is only for businesses you can call.
-  // If it's marked ready but has no phone — just an email — it goes
-  // straight to Dispatch instead, since that's where email-only leads
-  // actually belong.
+  // The simple funnel: LIVE ("ready") is only for businesses with a real
+  // mobile number. Anything else (landline-only, email-only) goes to
+  // Pending instead, for you to triage manually — Corporate or Bin.
   let autoRouted = false;
-  if(status === 'ready' && !phone && email){
+  if(status === 'ready' && !isMobileNumber(phone)){
     status = 'sent';
     autoRouted = true;
   }
@@ -1686,7 +1741,7 @@ document.getElementById('mg-save-btn').addEventListener('click', async () => {
     mgRender();
     updateMgPill();
     if(autoRouted){
-      alert(name + ' has no phone number, so it was routed to Dispatch instead of Live.');
+      alert(name + ' has no mobile number, so it was routed to Pending instead of Live.');
     }
   }catch(err){ console.error('Mini GALAXY save failed:', err); }
   mgCloseModal();
