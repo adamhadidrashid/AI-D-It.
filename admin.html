@@ -427,7 +427,7 @@
         <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
         <div class="column" data-stage="calling"><div class="column-head"><span>Calling</span><span class="count">0</span></div><div class="cards" data-stage="calling"></div></div>
         <div class="column" data-stage="callback"><div class="column-head"><span>Call Back</span><span class="count">0</span></div><div class="cards" data-stage="callback"></div></div>
-        <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
+        <div class="column" data-stage="contacted"><div class="column-head"><span>Contact Follow Up</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
         <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span style="display:flex; align-items:center; gap:8px;"><span class="count">0</span><button class="bin-clear-btn" id="bin-clear-main" title="Permanently delete everything in the Bin">&#128465;</button></span></div><div class="cards" data-stage="lost"></div></div>
@@ -447,7 +447,7 @@
         <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
         <div class="column" data-stage="calling"><div class="column-head"><span>Calling</span><span class="count">0</span></div><div class="cards" data-stage="calling"></div></div>
         <div class="column" data-stage="callback"><div class="column-head"><span>Call Back</span><span class="count">0</span></div><div class="cards" data-stage="callback"></div></div>
-        <div class="column" data-stage="contacted"><div class="column-head"><span>Contacted</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
+        <div class="column" data-stage="contacted"><div class="column-head"><span>Contact Follow Up</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
         <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span style="display:flex; align-items:center; gap:8px;"><span class="count">0</span><button class="bin-clear-btn" id="bin-clear-corp" title="Permanently delete everything in the Bin">&#128465;</button></span></div><div class="cards" data-stage="lost"></div></div>
@@ -1093,7 +1093,7 @@ document.getElementById('bin-clear-corp').addEventListener('click', e => { e.sto
 
 // ---- Focused single-stage view (click a column header) ----
 const FOCUS_STAGES = ['new','calling','callback','contacted','audit','won','lost'];
-const FOCUS_LABELS = { new:'New', calling:'Calling', callback:'Call Back', contacted:'Contacted', audit:'Appt Booked', won:'Won', lost:'Bin' };
+const FOCUS_LABELS = { new:'New', calling:'Calling', callback:'Call Back', contacted:'Contact Follow Up', audit:'Appt Booked', won:'Won', lost:'Bin' };
 let focusStageIndex = 0;
 let focusIsCorporate = false;
 
