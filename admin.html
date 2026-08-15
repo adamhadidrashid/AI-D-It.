@@ -127,8 +127,8 @@
   .view{ padding:24px 26px; flex:1; }
 
   /* ---- leads board (same as tracker, reused) ---- */
-  .board{ display:grid; grid-template-columns:repeat(7, minmax(190px, 1fr)); gap:12px; overflow-x:auto; padding-right:26px; }
-  @media (max-width:1400px){ .board{ grid-template-columns:repeat(7, minmax(190px, 1fr)); } }
+  .board{ display:grid; grid-template-columns:repeat(5, minmax(190px, 1fr)); gap:12px; overflow-x:auto; padding-right:26px; }
+  @media (max-width:1400px){ .board{ grid-template-columns:repeat(5, minmax(190px, 1fr)); } }
   @media (max-width:900px){ .board{ grid-template-columns:1fr; } }
 
   .call-card-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
@@ -143,11 +143,9 @@
   .column-head{ padding:14px 16px; border-bottom:1px solid var(--hair); display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; }
   .column-head:hover{ background:rgba(255,255,255,0.03); }
   .column[data-stage="new"] .column-head{ color:var(--ember); }
-  .column[data-stage="calling"] .column-head{ color:var(--mg-sapphire); }
-  .column[data-stage="callback"] .column-head{ color:var(--mg-amber); }
+  .column[data-stage="answer_machine"] .column-head{ color:var(--mg-amber); }
   .column[data-stage="contacted"] .column-head{ color:var(--violet); }
-  .column[data-stage="audit"] .column-head{ color:var(--blood); }
-  .column[data-stage="won"] .column-head{ color:#4ee08a; }
+  .column[data-stage="audit"] .column-head{ color:#4ee08a; }
   .column[data-stage="lost"] .column-head{ color:var(--steel); }
   .cards{ flex:1; min-height:0; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:10px; }
   .cards::-webkit-scrollbar{ width:6px; }
@@ -424,12 +422,10 @@
         </div>
       </div>
       <div class="board" id="board">
-        <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
-        <div class="column" data-stage="calling"><div class="column-head"><span>Calling</span><span class="count">0</span></div><div class="cards" data-stage="calling"></div></div>
-        <div class="column" data-stage="callback"><div class="column-head"><span>Call Back</span><span class="count">0</span></div><div class="cards" data-stage="callback"></div></div>
+        <div class="column" data-stage="new"><div class="column-head"><span>To Call</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
+        <div class="column" data-stage="answer_machine"><div class="column-head"><span>Answer Machines</span><span class="count">0</span></div><div class="cards" data-stage="answer_machine"></div></div>
         <div class="column" data-stage="contacted"><div class="column-head"><span>Contact Follow Up</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
-        <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
-        <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
+        <div class="column" data-stage="audit"><div class="column-head"><span>Appointment Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span style="display:flex; align-items:center; gap:8px;"><span class="count">0</span><button class="bin-clear-btn" id="bin-clear-main" title="Permanently delete everything in the Bin">&#128465;</button></span></div><div class="cards" data-stage="lost"></div></div>
       </div>
 
@@ -444,12 +440,10 @@
         <h2><span class="tab-dot dot-corporate"></span>Corporate</h2>
       </div>
       <div class="board" id="corp-board">
-        <div class="column" data-stage="new"><div class="column-head"><span>New</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
-        <div class="column" data-stage="calling"><div class="column-head"><span>Calling</span><span class="count">0</span></div><div class="cards" data-stage="calling"></div></div>
-        <div class="column" data-stage="callback"><div class="column-head"><span>Call Back</span><span class="count">0</span></div><div class="cards" data-stage="callback"></div></div>
+        <div class="column" data-stage="new"><div class="column-head"><span>To Call</span><span class="count">0</span></div><div class="cards" data-stage="new"></div></div>
+        <div class="column" data-stage="answer_machine"><div class="column-head"><span>Answer Machines</span><span class="count">0</span></div><div class="cards" data-stage="answer_machine"></div></div>
         <div class="column" data-stage="contacted"><div class="column-head"><span>Contact Follow Up</span><span class="count">0</span></div><div class="cards" data-stage="contacted"></div></div>
-        <div class="column" data-stage="audit"><div class="column-head"><span>Appt Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
-        <div class="column" data-stage="won"><div class="column-head"><span>Won</span><span class="count">0</span></div><div class="cards" data-stage="won"></div></div>
+        <div class="column" data-stage="audit"><div class="column-head"><span>Appointment Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span style="display:flex; align-items:center; gap:8px;"><span class="count">0</span><button class="bin-clear-btn" id="bin-clear-corp" title="Permanently delete everything in the Bin">&#128465;</button></span></div><div class="cards" data-stage="lost"></div></div>
       </div>
     </div>
@@ -588,6 +582,10 @@
         <option value="Mini GALAXY">Mini GALAXY</option>
         <option value="Chatbot">Chatbot</option>
       </select>
+    </div>
+    <div class="field" id="lead-outcome-field" style="display:none;">
+      <label>Outcome — currently: <span id="lead-current-stage" style="color:var(--ember); text-transform:none; letter-spacing:0;">To Call</span></label>
+      <div class="call-card-actions" id="lead-outcome-actions" style="margin-top:6px;"></div>
     </div>
     <div class="field"><label>Notes</label><textarea id="f-notes" rows="3"></textarea></div>
     <div class="field" id="lead-activity-field" style="display:none;">
@@ -955,9 +953,38 @@ async function moveToCorporate(id){
   renderCorporate();
 }
 
+function renderOutcomeButtons(actions, lead, showCorpButton){
+  const machineBtn = document.createElement('button');
+  machineBtn.textContent = 'Answer Machine';
+  machineBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'answer_machine'); });
+
+  const followUpBtn = document.createElement('button');
+  followUpBtn.textContent = 'Follow Up';
+  followUpBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'contacted'); });
+
+  const apptBtn = document.createElement('button');
+  apptBtn.textContent = 'Appt Booked';
+  apptBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'audit'); });
+
+  const binBtn = document.createElement('button');
+  binBtn.className = 'danger';
+  binBtn.textContent = 'Bin';
+  binBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'lost'); });
+
+  actions.append(machineBtn, followUpBtn, apptBtn, binBtn);
+
+  if(showCorpButton){
+    const corpBtn = document.createElement('button');
+    corpBtn.textContent = 'Corporate';
+    corpBtn.style.borderColor = 'var(--blood)';
+    corpBtn.addEventListener('click', e => { e.stopPropagation(); moveToCorporate(lead.id); });
+    actions.appendChild(corpBtn);
+  }
+}
+
 function renderBoard(boardSelector, leadsList, showCorpButton){
   document.querySelectorAll(boardSelector + ' .cards').forEach(col => col.innerHTML = '');
-  const stages = ['new','calling','callback','contacted','audit','won','lost'];
+  const stages = ['new','answer_machine','contacted','audit','lost'];
   stages.forEach(stage => {
     const items = leadsList.filter(l => l.stage === stage);
     const col = document.querySelector(boardSelector + ' .cards[data-stage="'+stage+'"]');
@@ -1000,41 +1027,17 @@ function renderBoard(boardSelector, leadsList, showCorpButton){
       const actions = document.createElement('div');
       actions.className = 'call-card-actions';
 
-      if(stage === 'new'){
-        const startBtn = document.createElement('button');
-        startBtn.textContent = 'Start';
-        startBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'calling'); });
-        actions.appendChild(startBtn);
-      } else if(stage === 'calling' || stage === 'callback'){
-        // Outcome tags (just label why, don't move on their own)
-        [['Answering Machine','Answering machine'],['Hung Up','Hung up'],['Not Interested','Not interested']].forEach(([label, tag]) => {
-          const b = document.createElement('button');
-          b.textContent = label;
-          b.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, stage, tag); });
-          actions.appendChild(b);
-        });
-        // Destination choices — full manual control over where it goes next
-        const sep = document.createElement('div');
-        sep.style.cssText = 'width:100%; height:1px; background:var(--hair); margin:4px 0;';
-        actions.appendChild(sep);
+      // Every stage except the two end-states (Appt Booked, Bin) gets
+      // the same direct outcome buttons — no separate "Start" step,
+      // just pick where it goes the moment you know.
+      if(stage === 'new' || stage === 'answer_machine' || stage === 'contacted'){
+        renderOutcomeButtons(actions, lead, showCorpButton);
+      } else if(stage === 'audit'){
         const binBtn = document.createElement('button');
         binBtn.className = 'danger';
         binBtn.textContent = 'Bin';
         binBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'lost'); });
-        const cbBtn = document.createElement('button');
-        cbBtn.textContent = 'Call Back List';
-        cbBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'callback'); });
-        const apptBtn = document.createElement('button');
-        apptBtn.textContent = 'Appt Booked';
-        apptBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'audit'); });
-        actions.append(binBtn, cbBtn, apptBtn);
-        if(showCorpButton){
-          const corpBtn = document.createElement('button');
-          corpBtn.textContent = 'Corporate';
-          corpBtn.style.borderColor = 'var(--blood)';
-          corpBtn.addEventListener('click', e => { e.stopPropagation(); moveToCorporate(lead.id); });
-          actions.appendChild(corpBtn);
-        }
+        actions.appendChild(binBtn);
       }
 
       if(actions.children.length) card.appendChild(actions);
@@ -1092,8 +1095,8 @@ document.getElementById('bin-clear-main').addEventListener('click', e => { e.sto
 document.getElementById('bin-clear-corp').addEventListener('click', e => { e.stopPropagation(); clearBin(true); });
 
 // ---- Focused single-stage view (click a column header) ----
-const FOCUS_STAGES = ['new','calling','callback','contacted','audit','won','lost'];
-const FOCUS_LABELS = { new:'New', calling:'Calling', callback:'Call Back', contacted:'Contact Follow Up', audit:'Appt Booked', won:'Won', lost:'Bin' };
+const FOCUS_STAGES = ['new','answer_machine','contacted','audit','lost'];
+const FOCUS_LABELS = { new:'To Call', answer_machine:'Answer Machines', contacted:'Contact Follow Up', audit:'Appointment Booked', lost:'Bin' };
 let focusStageIndex = 0;
 let focusIsCorporate = false;
 
@@ -1153,9 +1156,51 @@ document.getElementById('focus-modal-backdrop').addEventListener('click', e => {
   if(e.target.id === 'focus-modal-backdrop') document.getElementById('focus-modal-backdrop').classList.remove('open');
 });
 
+const STAGE_DISPLAY_LABELS = { new:'To Call', answer_machine:'Answer Machines', contacted:'Contact Follow Up', audit:'Appointment Booked', lost:'Bin' };
+
+function renderModalOutcomeButtons(lead){
+  const actionsEl = document.getElementById('lead-outcome-actions');
+  actionsEl.innerHTML = '';
+  if(lead.stage === 'lost'){
+    return; // nothing left to do once binned
+  }
+  const setOutcome = async (stage) => {
+    await sbClient.from('leads').update({ stage }).eq('id', lead.id);
+    lead.stage = stage;
+    document.getElementById('lead-current-stage').textContent = STAGE_DISPLAY_LABELS[stage] || stage;
+    render();
+    renderCorporate();
+    renderModalOutcomeButtons(lead);
+  };
+  if(lead.stage !== 'answer_machine'){
+    const b = document.createElement('button');
+    b.textContent = 'Answer Machine';
+    b.addEventListener('click', () => setOutcome('answer_machine'));
+    actionsEl.appendChild(b);
+  }
+  if(lead.stage !== 'contacted'){
+    const b = document.createElement('button');
+    b.textContent = 'Follow Up';
+    b.addEventListener('click', () => setOutcome('contacted'));
+    actionsEl.appendChild(b);
+  }
+  if(lead.stage !== 'audit'){
+    const b = document.createElement('button');
+    b.textContent = 'Appt Booked';
+    b.addEventListener('click', () => setOutcome('audit'));
+    actionsEl.appendChild(b);
+  }
+  const binBtn = document.createElement('button');
+  binBtn.className = 'danger';
+  binBtn.textContent = 'Bin';
+  binBtn.addEventListener('click', () => setOutcome('lost'));
+  actionsEl.appendChild(binBtn);
+}
+
 function openModal(id){
   const deleteBtn = document.getElementById('delete-lead-btn');
   const activityField = document.getElementById('lead-activity-field');
+  const outcomeField = document.getElementById('lead-outcome-field');
   const websiteGoBtn = document.getElementById('f-website-go');
   if(id){
     editingId = id;
@@ -1175,6 +1220,9 @@ function openModal(id){
     }
     deleteBtn.style.display = 'inline-block';
     activityField.style.display = 'block';
+    outcomeField.style.display = 'block';
+    document.getElementById('lead-current-stage').textContent = STAGE_DISPLAY_LABELS[lead.stage] || lead.stage;
+    renderModalOutcomeButtons(lead);
     loadLeadActivity(id);
   } else {
     editingId = null;
@@ -1188,6 +1236,7 @@ function openModal(id){
     websiteGoBtn.style.display = 'none';
     deleteBtn.style.display = 'none';
     activityField.style.display = 'none';
+    outcomeField.style.display = 'none';
   }
   document.getElementById('modal-backdrop').classList.add('open');
 }
