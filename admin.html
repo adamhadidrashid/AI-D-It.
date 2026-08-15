@@ -81,6 +81,9 @@
     color:var(--ember); text-decoration:none;
   }
   .sidebar-back:hover{ text-shadow:0 0 8px rgba(46,230,255,0.6); }
+  #mg-sub-tabs{ display:none; }
+  #mg-sub-tabs.expanded{ display:block; }
+  #mg-sub-tabs .tab-link.sub-tab{ padding-left:38px; font-size:11px; }
   .sidebar .logotype{ font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:18px; text-transform:uppercase; padding:0 20px 20px; letter-spacing:0.02em; }
   .sidebar .logotype span{ color:var(--ember); }
   .tab-link{
@@ -377,9 +380,12 @@
   <div class="sidebar">
     <a href="index.html" class="sidebar-back">&#8592; Back</a>
     <div class="logotype">AI<span>'D</span> IT</div>
-    <a class="tab-link active" data-tab="leads"><span class="tab-dot dot-leads"></span>Leads</a>
-    <a class="tab-link" data-tab="corporate"><span class="tab-dot dot-corporate"></span>Corporate</a>
-    <a class="tab-link" data-tab="minigalaxy"><span class="tab-dot dot-mg"></span>Mini GALAXY</a>
+    <a class="tab-link" id="mg-parent-tab" data-tab="minigalaxy"><span class="tab-dot dot-mg"></span>Mini GALAXY <span id="mg-expand-arrow" style="float:right;">&#9656;</span></a>
+    <div id="mg-sub-tabs">
+      <a class="tab-link sub-tab active" data-tab="leads"><span class="tab-dot dot-leads"></span>Leads</a>
+      <a class="tab-link sub-tab" data-tab="corporate"><span class="tab-dot dot-corporate"></span>Corporate</a>
+      <a class="tab-link sub-tab" data-tab="notinterested"><span class="tab-dot" style="background:var(--steel); box-shadow:none;"></span>Not Interested</a>
+    </div>
     <a class="tab-link disabled" title="Add more tabs later">+ More soon</a>
   </div>
   <div class="main-col">
@@ -397,7 +403,7 @@
     <div class="view" id="view-leads">
       <div class="view-head">
         <div style="display:flex; align-items:center; gap:14px;">
-          <div class="mg-agent-wrap" id="mg-agent-wrap" style="display:none;">
+          <div class="mg-agent-wrap" id="mg-agent-wrap" style="display:none; cursor:pointer;" title="Click for call stats">
             <svg class="mg-agent-svg" viewBox="0 0 60 60" width="42" height="42">
               <circle cx="30" cy="30" r="9" class="mg-agent-core"/>
               <g class="mg-agent-orbit">
@@ -446,6 +452,14 @@
         <div class="column" data-stage="audit"><div class="column-head"><span>Appointment Booked</span><span class="count">0</span></div><div class="cards" data-stage="audit"></div></div>
         <div class="column" data-stage="lost"><div class="column-head"><span>Bin</span><span style="display:flex; align-items:center; gap:8px;"><span class="count">0</span><button class="bin-clear-btn" id="bin-clear-corp" title="Permanently delete everything in the Bin">&#128465;</button></span></div><div class="cards" data-stage="lost"></div></div>
       </div>
+    </div>
+
+    <div class="view hidden" id="view-notinterested">
+      <div class="view-head">
+        <h2>Not Interested</h2>
+      </div>
+      <p style="color:var(--bone-dim); font-size:13px; margin-top:-10px;">Kept here, not deleted — different from the Bin.</p>
+      <div class="mg-list" id="ni-list" style="margin-top:20px;"></div>
     </div>
 
     <div class="view hidden" id="view-minigalaxy">
@@ -589,11 +603,15 @@
     </div>
     <div class="field"><label>Notes</label><textarea id="f-notes" rows="3"></textarea></div>
     <div class="field" id="lead-activity-field" style="display:none;">
-      <label>CRM — contact activity log</label>
+      <label>CRM — activity log</label>
       <div id="lead-activity-list" style="max-height:150px; overflow-y:auto; border:1px solid var(--hair); padding:8px; font-size:12px; color:var(--bone-dim); margin-bottom:8px;"></div>
+      <div style="display:flex; gap:8px; margin-bottom:6px;">
+        <input type="text" id="lead-call-input" placeholder="What happened on the call...">
+        <button class="btn" id="lead-call-add" style="white-space:nowrap;">Log Call</button>
+      </div>
       <div style="display:flex; gap:8px;">
-        <input type="text" id="lead-activity-input" placeholder="Log a call, email, note...">
-        <button class="btn" id="lead-activity-add" style="white-space:nowrap;">Log</button>
+        <input type="text" id="lead-note-input" placeholder="Something you found out, not a call...">
+        <button class="btn ghost" id="lead-note-add" style="white-space:nowrap;">Add Note</button>
       </div>
     </div>
     <div class="modal-actions">
@@ -655,6 +673,28 @@
       <div style="display:flex; gap:10px; margin-left:auto;">
         <button class="btn ghost" id="mg-push-cancel-btn">Close</button>
         <button class="btn" id="mg-push-confirm-btn">Push to Leads List</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="call-stats-modal-backdrop">
+  <div class="modal" style="max-width:400px;">
+    <h2>Call Stats</h2>
+    <div style="display:flex; gap:16px; margin-top:16px;">
+      <div style="flex:1; text-align:center; border:1px solid var(--hair); padding:20px 10px;">
+        <div id="stat-calls-made" style="font-family:'Big Shoulders Display', sans-serif; font-size:36px; font-weight:700; color:var(--ember);">0</div>
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); margin-top:4px;">Calls Made</div>
+      </div>
+      <div style="flex:1; text-align:center; border:1px solid var(--hair); padding:20px 10px;">
+        <div id="stat-calls-connected" style="font-family:'Big Shoulders Display', sans-serif; font-size:36px; font-weight:700; color:#4ee08a;">0</div>
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); margin-top:4px;">Calls Connected</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:10px; color:var(--bone-dim); font-size:12px;" id="stat-calls-am">0 hit an answering machine / voicemail</div>
+    <div class="modal-actions">
+      <div style="margin-left:auto;">
+        <button class="btn ghost" id="call-stats-close-btn">Close</button>
       </div>
     </div>
   </div>
@@ -907,7 +947,14 @@ document.querySelectorAll('.tab-link[data-tab]').forEach(link => {
     document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
     document.getElementById('view-' + link.dataset.tab).classList.remove('hidden');
     document.getElementById('mg-living-sphere-wrap').style.display = (link.dataset.tab === 'leads') ? 'flex' : 'none';
+    if(link.dataset.tab === 'notinterested') renderNotInterested();
   });
+});
+document.getElementById('mg-parent-tab').addEventListener('click', () => {
+  const subTabs = document.getElementById('mg-sub-tabs');
+  const arrow = document.getElementById('mg-expand-arrow');
+  const expanded = subTabs.classList.toggle('expanded');
+  arrow.innerHTML = expanded ? '&#9662;' : '&#9656;';
 });
 document.getElementById('mg-pill').addEventListener('click', () => {
   document.querySelector('.tab-link[data-tab="minigalaxy"]').click();
@@ -932,15 +979,17 @@ function escapeHtml(str){
 
 const RENDER_CAP = 200;
 
-async function moveLeadStage(id, stage, outcome){
+async function moveLeadStage(id, stage){
   const lead = leads.find(l => l.id === id);
   if(!lead) return;
   lead.stage = stage;
-  if(outcome !== undefined) lead.call_outcome = outcome;
-  const patch = outcome !== undefined ? { stage, call_outcome: outcome } : { stage };
-  await sbClient.from('leads').update(patch).eq('id', id);
+  await sbClient.from('leads').update({ stage }).eq('id', id);
   render();
   renderCorporate();
+}
+
+async function logCallEntry(leadId, entryType, note){
+  await sbClient.from('lead_activity').insert({ lead_id: leadId, entry_type: entryType, note });
 }
 
 async function moveToCorporate(id){
@@ -956,7 +1005,11 @@ async function moveToCorporate(id){
 function renderOutcomeButtons(actions, lead, showCorpButton){
   const machineBtn = document.createElement('button');
   machineBtn.textContent = 'Answer Machine';
-  machineBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'answer_machine'); });
+  machineBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    moveLeadStage(lead.id, 'answer_machine');
+    logCallEntry(lead.id, 'call_am', 'Reached answering machine / voicemail');
+  });
 
   const followUpBtn = document.createElement('button');
   followUpBtn.textContent = 'Follow Up';
@@ -966,12 +1019,16 @@ function renderOutcomeButtons(actions, lead, showCorpButton){
   apptBtn.textContent = 'Appt Booked';
   apptBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'audit'); });
 
+  const niBtn = document.createElement('button');
+  niBtn.textContent = 'Not Interested';
+  niBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'not_interested'); });
+
   const binBtn = document.createElement('button');
   binBtn.className = 'danger';
   binBtn.textContent = 'Bin';
   binBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'lost'); });
 
-  actions.append(machineBtn, followUpBtn, apptBtn, binBtn);
+  actions.append(machineBtn, followUpBtn, apptBtn, niBtn, binBtn);
 
   if(showCorpButton){
     const corpBtn = document.createElement('button');
@@ -1019,9 +1076,6 @@ function renderBoard(boardSelector, leadsList, showCorpButton){
         (lead.phone ? '<div class="meta">' + escapeHtml(lead.phone) + '</div>' : '') +
         (lead.website ? '<div class="meta">' + escapeHtml(lead.website) + '</div>' : '') +
         '<span class="src">' + escapeHtml(lead.source || '') + '</span>';
-      if(lead.call_outcome){
-        inner += '<div class="call-outcome-tag">' + escapeHtml(lead.call_outcome) + '</div>';
-      }
       card.innerHTML = inner;
 
       const actions = document.createElement('div');
@@ -1054,6 +1108,32 @@ function render(){
 
 function renderCorporate(){
   renderBoard('#corp-board', leads.filter(l => l.is_corporate), false);
+}
+
+function renderNotInterested(){
+  const items = leads.filter(l => l.stage === 'not_interested');
+  const listEl = document.getElementById('ni-list');
+  listEl.innerHTML = '';
+  if(!items.length){
+    listEl.innerHTML = '<div class="mg-list-empty">Nothing here</div>';
+    return;
+  }
+  const toRender = items.length > RENDER_CAP ? items.slice(-RENDER_CAP) : items;
+  toRender.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'mg-list-row';
+    row.innerHTML =
+      '<div><div class="mg-list-name">' + escapeHtml(lead.biz) + '</div>' +
+      '<div class="mg-list-meta">' + [lead.contact, lead.phone, lead.website].filter(Boolean).map(escapeHtml).join(' · ') + (lead.is_corporate ? ' · Corporate' : '') + '</div></div>' +
+      '<button class="btn ghost" data-reactivate-id="' + lead.id + '" style="padding:8px 14px; font-size:10px;">Reactivate</button>';
+    row.querySelector('[data-reactivate-id]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveLeadStage(lead.id, 'new');
+      renderNotInterested();
+    });
+    row.addEventListener('click', () => openModal(lead.id));
+    listEl.appendChild(row);
+  });
 }
 
 function wireBoardDragDrop(boardSelector, corporateOnly){
@@ -1156,13 +1236,13 @@ document.getElementById('focus-modal-backdrop').addEventListener('click', e => {
   if(e.target.id === 'focus-modal-backdrop') document.getElementById('focus-modal-backdrop').classList.remove('open');
 });
 
-const STAGE_DISPLAY_LABELS = { new:'To Call', answer_machine:'Answer Machines', contacted:'Contact Follow Up', audit:'Appointment Booked', lost:'Bin' };
+const STAGE_DISPLAY_LABELS = { new:'To Call', answer_machine:'Answer Machines', contacted:'Contact Follow Up', audit:'Appointment Booked', not_interested:'Not Interested', lost:'Bin' };
 
 function renderModalOutcomeButtons(lead){
   const actionsEl = document.getElementById('lead-outcome-actions');
   actionsEl.innerHTML = '';
-  if(lead.stage === 'lost'){
-    return; // nothing left to do once binned
+  if(lead.stage === 'lost' || lead.stage === 'not_interested'){
+    return; // nothing left to do once binned or marked not interested
   }
   const setOutcome = async (stage) => {
     await sbClient.from('leads').update({ stage }).eq('id', lead.id);
@@ -1175,7 +1255,11 @@ function renderModalOutcomeButtons(lead){
   if(lead.stage !== 'answer_machine'){
     const b = document.createElement('button');
     b.textContent = 'Answer Machine';
-    b.addEventListener('click', () => setOutcome('answer_machine'));
+    b.addEventListener('click', () => {
+      setOutcome('answer_machine');
+      logCallEntry(lead.id, 'call_am', 'Reached answering machine / voicemail');
+      loadLeadActivity(lead.id);
+    });
     actionsEl.appendChild(b);
   }
   if(lead.stage !== 'contacted'){
@@ -1190,6 +1274,25 @@ function renderModalOutcomeButtons(lead){
     b.addEventListener('click', () => setOutcome('audit'));
     actionsEl.appendChild(b);
   }
+  const niBtn = document.createElement('button');
+  niBtn.textContent = 'Not Interested';
+  niBtn.addEventListener('click', () => setOutcome('not_interested'));
+  actionsEl.appendChild(niBtn);
+
+  if(!lead.is_corporate){
+    const corpBtn = document.createElement('button');
+    corpBtn.textContent = 'Corporate';
+    corpBtn.style.borderColor = 'var(--blood)';
+    corpBtn.addEventListener('click', async () => {
+      await moveToCorporate(lead.id);
+      lead.is_corporate = true;
+      lead.stage = 'new';
+      document.getElementById('lead-current-stage').textContent = STAGE_DISPLAY_LABELS['new'];
+      renderModalOutcomeButtons(lead);
+    });
+    actionsEl.appendChild(corpBtn);
+  }
+
   const binBtn = document.createElement('button');
   binBtn.className = 'danger';
   binBtn.textContent = 'Bin';
@@ -1245,6 +1348,9 @@ function closeModal(){
   editingId = null;
 }
 
+const ENTRY_TYPE_LABELS = { call_connected: 'CALL', call_am: 'AM/VM', note: 'NOTE' };
+const ENTRY_TYPE_COLORS = { call_connected: '#4ee08a', call_am: 'var(--mg-amber)', note: 'var(--bone-dim)' };
+
 async function loadLeadActivity(leadId){
   const listEl = document.getElementById('lead-activity-list');
   listEl.innerHTML = 'Loading...';
@@ -1256,7 +1362,13 @@ async function loadLeadActivity(leadId){
     }
     listEl.innerHTML = data.map(e => {
       const when = new Date(e.created_at).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-      return '<div style="margin-bottom:6px;"><span style="color:var(--bone-dim); font-family:\'IBM Plex Mono\', monospace; font-size:10px;">' + when + '</span><br>' + escapeHtml(e.note) + '</div>';
+      const type = e.entry_type || 'note';
+      const tagLabel = ENTRY_TYPE_LABELS[type] || 'NOTE';
+      const tagColor = ENTRY_TYPE_COLORS[type] || 'var(--bone-dim)';
+      return '<div style="margin-bottom:8px;">' +
+        '<span style="color:' + tagColor + '; font-family:\'IBM Plex Mono\', monospace; font-size:9px; letter-spacing:0.06em; border:1px solid ' + tagColor + '; padding:1px 5px; margin-right:6px;">' + tagLabel + '</span>' +
+        '<span style="color:var(--bone-dim); font-family:\'IBM Plex Mono\', monospace; font-size:10px;">' + when + '</span><br>' +
+        escapeHtml(e.note) + '</div>';
     }).join('');
   }catch(err){
     console.error('Failed to load lead activity:', err);
@@ -1264,26 +1376,26 @@ async function loadLeadActivity(leadId){
   }
 }
 
-document.getElementById('lead-activity-add').addEventListener('click', async () => {
-  const input = document.getElementById('lead-activity-input');
+document.getElementById('lead-call-add').addEventListener('click', async () => {
+  const input = document.getElementById('lead-call-input');
   const note = input.value.trim();
   if(!note || !editingId) return;
-
-  if(note.toLowerCase() === 'corporate'){
-    input.value = '';
-    try{
-      await sbClient.from('lead_activity').insert({ lead_id: editingId, note: 'Moved to Corporate' });
-    }catch(err){ console.error('Failed to log move-to-corporate note:', err); }
-    await moveToCorporate(editingId);
-    document.getElementById('modal-backdrop').classList.remove('open');
-    return;
-  }
-
   try{
-    await sbClient.from('lead_activity').insert({ lead_id: editingId, note });
+    await logCallEntry(editingId, 'call_connected', note);
     input.value = '';
     await loadLeadActivity(editingId);
-  }catch(err){ console.error('Failed to log lead activity:', err); }
+  }catch(err){ console.error('Failed to log call:', err); }
+});
+
+document.getElementById('lead-note-add').addEventListener('click', async () => {
+  const input = document.getElementById('lead-note-input');
+  const note = input.value.trim();
+  if(!note || !editingId) return;
+  try{
+    await logCallEntry(editingId, 'note', note);
+    input.value = '';
+    await loadLeadActivity(editingId);
+  }catch(err){ console.error('Failed to log note:', err); }
 });
 
 document.getElementById('add-lead-btn').addEventListener('click', () => openModal(null));
@@ -1390,6 +1502,29 @@ function updateMgAgentBadge(){
     }
   }
 }
+
+async function openCallStatsModal(){
+  try{
+    const { data, error } = await sbClient.from('lead_activity').select('entry_type');
+    if(error) throw error;
+    const made = data.filter(e => e.entry_type === 'call_connected' || e.entry_type === 'call_am').length;
+    const connected = data.filter(e => e.entry_type === 'call_connected').length;
+    const am = data.filter(e => e.entry_type === 'call_am').length;
+    document.getElementById('stat-calls-made').textContent = made;
+    document.getElementById('stat-calls-connected').textContent = connected;
+    document.getElementById('stat-calls-am').textContent = am + ' hit an answering machine / voicemail';
+  }catch(err){
+    console.error('Failed to load call stats:', err);
+  }
+  document.getElementById('call-stats-modal-backdrop').classList.add('open');
+}
+document.getElementById('mg-agent-wrap').addEventListener('click', openCallStatsModal);
+document.getElementById('call-stats-close-btn').addEventListener('click', () => {
+  document.getElementById('call-stats-modal-backdrop').classList.remove('open');
+});
+document.getElementById('call-stats-modal-backdrop').addEventListener('click', e => {
+  if(e.target.id === 'call-stats-modal-backdrop') document.getElementById('call-stats-modal-backdrop').classList.remove('open');
+});
 
 // ---- Dispatch: email draft template ----
 // Right now this just fills the modal for you to copy and send manually.
