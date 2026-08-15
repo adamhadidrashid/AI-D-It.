@@ -1039,7 +1039,7 @@ function renderOutcomeButtons(actions, lead, showCorpButton){
   }
 }
 
-function renderBoard(boardSelector, leadsList, showCorpButton){
+function renderBoard(boardSelector, leadsList, showCorpButton, showOutcomeButtons){
   document.querySelectorAll(boardSelector + ' .cards').forEach(col => col.innerHTML = '');
   const stages = ['new','answer_machine','contacted','audit','lost'];
   stages.forEach(stage => {
@@ -1078,23 +1078,24 @@ function renderBoard(boardSelector, leadsList, showCorpButton){
         '<span class="src">' + escapeHtml(lead.source || '') + '</span>';
       card.innerHTML = inner;
 
-      const actions = document.createElement('div');
-      actions.className = 'call-card-actions';
-
-      // Every stage except the two end-states (Appt Booked, Bin) gets
-      // the same direct outcome buttons — no separate "Start" step,
-      // just pick where it goes the moment you know.
-      if(stage === 'new' || stage === 'answer_machine' || stage === 'contacted'){
-        renderOutcomeButtons(actions, lead, showCorpButton);
-      } else if(stage === 'audit'){
-        const binBtn = document.createElement('button');
-        binBtn.className = 'danger';
-        binBtn.textContent = 'Bin';
-        binBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'lost'); });
-        actions.appendChild(binBtn);
+      // Outcome buttons take up real space — on Leads specifically they're
+      // off, since the exact same buttons already live in the profile
+      // modal one click away. Corporate keeps them on the card itself.
+      if(showOutcomeButtons){
+        const actions = document.createElement('div');
+        actions.className = 'call-card-actions';
+        if(stage === 'new' || stage === 'answer_machine' || stage === 'contacted'){
+          renderOutcomeButtons(actions, lead, showCorpButton);
+        } else if(stage === 'audit'){
+          const binBtn = document.createElement('button');
+          binBtn.className = 'danger';
+          binBtn.textContent = 'Bin';
+          binBtn.addEventListener('click', e => { e.stopPropagation(); moveLeadStage(lead.id, 'lost'); });
+          actions.appendChild(binBtn);
+        }
+        if(actions.children.length) card.appendChild(actions);
       }
 
-      if(actions.children.length) card.appendChild(actions);
       card.addEventListener('click', () => openModal(lead.id));
       card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', lead.id));
       col.appendChild(card);
@@ -1103,11 +1104,11 @@ function renderBoard(boardSelector, leadsList, showCorpButton){
 }
 
 function render(){
-  renderBoard('#board', leads.filter(l => !l.is_corporate), true);
+  renderBoard('#board', leads.filter(l => !l.is_corporate), true, false);
 }
 
 function renderCorporate(){
-  renderBoard('#corp-board', leads.filter(l => l.is_corporate), false);
+  renderBoard('#corp-board', leads.filter(l => l.is_corporate), false, true);
 }
 
 function renderNotInterested(){
