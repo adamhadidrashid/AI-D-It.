@@ -181,6 +181,12 @@
   .call-empty .big-check{ font-size:32px; color:#4ee08a; display:block; margin-bottom:12px; }
 
   .outcome-toast{ position:fixed; bottom:28px; right:28px; background:var(--card); border:1px solid #4ee08a; color:#4ee08a; padding:12px 20px; font-size:12px; font-family:'IBM Plex Mono', monospace; opacity:0; transform:translateY(8px); transition:opacity .2s, transform .2s; pointer-events:none; z-index:999; }
+
+  .tpl-item{ display:flex; justify-content:space-between; align-items:center; padding:9px 10px; border:1px solid var(--hair); margin-bottom:6px; font-size:12px; color:var(--bone-dim); }
+  .tpl-item span{ cursor:default; }
+  .tpl-item button{ background:transparent; border:none; color:var(--blood); cursor:pointer; font-size:11px; font-family:'IBM Plex Mono', monospace; }
+  .compose-btn{ background:transparent; border:1px solid #ff7a45; color:#ff7a45; padding:8px 16px; font-size:11px; border-radius:3px; font-family:'IBM Plex Mono', monospace; cursor:pointer; white-space:nowrap; }
+  .compose-btn:disabled{ border-color:var(--hair); color:var(--steel); cursor:not-allowed; }
   .outcome-toast.show{ opacity:1; transform:translateY(0); }
 
   .call-card-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
@@ -434,6 +440,7 @@
       <a class="tab-link sub-tab active" data-tab="leads"><span class="tab-dot dot-leads"></span>Leads</a>
       <a class="tab-link sub-tab" data-tab="corporate"><span class="tab-dot dot-corporate"></span>Corporate</a>
       <a class="tab-link sub-tab" data-tab="notinterested"><span class="tab-dot" style="background:var(--steel); box-shadow:none;"></span>Not Interested</a>
+      <a class="tab-link sub-tab" data-tab="email"><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Email</a>
     </div>
     <a class="tab-link disabled" title="Add more tabs later">+ More soon</a>
   </div>
@@ -532,6 +539,47 @@
       </div>
       <p style="color:var(--bone-dim); font-size:13px; margin-top:-10px;">Kept here, not deleted — different from the Bin.</p>
       <div class="mg-list" id="ni-list" style="margin-top:20px;"></div>
+    </div>
+
+    <div class="view hidden" id="view-email">
+      <div class="view-head">
+        <h2><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Email</h2>
+        <div style="display:flex; align-items:center; gap:16px;">
+          <div style="font-size:12px; color:var(--bone-dim);">Sent today: <span id="email-sent-today" style="color:#ff7a45;">0</span></div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:11px; color:var(--bone-dim);">Seconds between sends</label>
+            <input type="number" id="email-pace-seconds" value="60" min="0" style="width:60px; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:6px 8px; font-family:'IBM Plex Mono', monospace; font-size:12px;">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:280px 1fr; gap:24px; margin-top:20px;">
+        <div>
+          <div class="call-section-label">Templates</div>
+          <div id="email-template-list" style="margin-bottom:14px;"></div>
+          <div style="border:1px solid var(--hair); padding:12px;">
+            <input type="text" id="tpl-name" placeholder="Template name" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:8px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:8px; box-sizing:border-box;">
+            <input type="text" id="tpl-subject" placeholder="Subject" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:8px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:8px; box-sizing:border-box;">
+            <textarea id="tpl-body" rows="6" placeholder="Body — use {{business}} to insert the business name" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:8px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:8px; box-sizing:border-box;"></textarea>
+            <button class="btn" id="tpl-save-btn" style="width:100%;">Save Template</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="call-section-label">Selected template</div>
+          <select id="email-selected-template" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:18px;">
+            <option value="custom">Custom message (write per email)</option>
+          </select>
+
+          <div id="email-custom-fields" style="display:none; margin-bottom:18px;">
+            <input type="text" id="email-custom-subject" placeholder="Subject" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:8px; box-sizing:border-box;">
+            <textarea id="email-custom-body" rows="4" placeholder="Body" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;"></textarea>
+          </div>
+
+          <div class="call-section-label">Eligible leads · <span id="email-list-count">0</span></div>
+          <div id="email-list" style="max-height:55vh; overflow-y:auto;"></div>
+        </div>
+      </div>
     </div>
 
     <div class="view hidden" id="view-minigalaxy">
@@ -1023,6 +1071,7 @@ document.querySelectorAll('.tab-link[data-tab]').forEach(link => {
     document.getElementById('view-' + link.dataset.tab).classList.remove('hidden');
     document.getElementById('mg-living-sphere-wrap').style.display = (link.dataset.tab === 'leads') ? 'flex' : 'none';
     if(link.dataset.tab === 'notinterested') renderNotInterested();
+    if(link.dataset.tab === 'email') renderEmailView();
   });
 });
 document.getElementById('mg-parent-tab').addEventListener('click', () => {
@@ -1355,6 +1404,151 @@ document.querySelectorAll('#lead-mode-toggle .mode-btn').forEach(btn => {
     if(!isBoard){ syncCallQueue(); renderCallProfile(); }
   });
 });
+
+// ---- Email tab ----
+let emailTemplates = [];
+let emailCooldownUntil = 0;
+
+async function loadEmailTemplates(){
+  try{
+    const { data } = await sbClient.from('mg_email_templates').select('*').order('created_at', { ascending:true });
+    emailTemplates = data || [];
+  }catch(err){ console.error('Failed to load templates:', err); emailTemplates = []; }
+}
+
+function renderTemplateList(){
+  const listEl = document.getElementById('email-template-list');
+  listEl.innerHTML = '';
+  emailTemplates.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'tpl-item';
+    row.innerHTML = '<span>' + escapeHtml(t.name) + '</span>';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', async () => {
+      await sbClient.from('mg_email_templates').delete().eq('id', t.id);
+      await loadEmailTemplates();
+      renderTemplateList();
+      populateTemplateDropdown();
+    });
+    row.appendChild(delBtn);
+    listEl.appendChild(row);
+  });
+
+  populateTemplateDropdown();
+}
+
+function populateTemplateDropdown(){
+  const select = document.getElementById('email-selected-template');
+  const current = select.value;
+  select.innerHTML = '<option value="custom">Custom message (write per email)</option>';
+  emailTemplates.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    select.appendChild(opt);
+  });
+  if([...select.options].some(o => o.value === current)) select.value = current;
+}
+
+document.getElementById('tpl-save-btn').addEventListener('click', async () => {
+  const name = document.getElementById('tpl-name').value.trim();
+  const subject = document.getElementById('tpl-subject').value.trim();
+  const body = document.getElementById('tpl-body').value.trim();
+  if(!name || !subject || !body) return;
+  await sbClient.from('mg_email_templates').insert({ name, subject, body });
+  document.getElementById('tpl-name').value = '';
+  document.getElementById('tpl-subject').value = '';
+  document.getElementById('tpl-body').value = '';
+  await loadEmailTemplates();
+  renderTemplateList();
+});
+
+document.getElementById('email-selected-template').addEventListener('change', (e) => {
+  document.getElementById('email-custom-fields').style.display = e.target.value === 'custom' ? 'block' : 'none';
+});
+
+function eligibleEmailLeads(){
+  return mgLeads.filter(l => l.email && l.email.trim() && l.status !== 'rejected' && !l.email_sent);
+}
+
+function updateSentTodayCount(){
+  const today = new Date().toDateString();
+  const count = mgLeads.filter(l => l.email_sent_at && new Date(l.email_sent_at).toDateString() === today).length;
+  document.getElementById('email-sent-today').textContent = count;
+}
+
+function renderEmailList(){
+  const items = eligibleEmailLeads();
+  document.getElementById('email-list-count').textContent = items.length;
+  const listEl = document.getElementById('email-list');
+  listEl.innerHTML = '';
+  if(!items.length){
+    listEl.innerHTML = '<div class="mg-list-empty">Nothing left to email</div>';
+    return;
+  }
+  const toRender = items.length > MG_LIST_RENDER_CAP ? items.slice(0, MG_LIST_RENDER_CAP) : items;
+  toRender.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'mg-list-row';
+    row.innerHTML =
+      '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
+      '<div class="mg-list-meta">' + escapeHtml(lead.email) + (lead.town ? ' · ' + escapeHtml(lead.town) : '') + '</div></div>' +
+      '<button class="compose-btn" data-compose-id="' + lead.id + '">Compose</button>';
+    row.querySelector('[data-compose-id]').addEventListener('click', (e) => { e.stopPropagation(); composeEmail(lead); });
+    listEl.appendChild(row);
+  });
+  applyCooldownToButtons();
+}
+
+function applyCooldownToButtons(){
+  const remaining = emailCooldownUntil - Date.now();
+  document.querySelectorAll('.compose-btn').forEach(btn => {
+    btn.disabled = remaining > 0;
+    btn.textContent = remaining > 0 ? Math.ceil(remaining / 1000) + 's' : 'Compose';
+  });
+  if(remaining > 0) setTimeout(applyCooldownToButtons, 500);
+}
+
+async function composeEmail(lead){
+  const selectedId = document.getElementById('email-selected-template').value;
+  let subject, body;
+  if(selectedId === 'custom'){
+    subject = document.getElementById('email-custom-subject').value.trim();
+    body = document.getElementById('email-custom-body').value.trim();
+    if(!subject || !body){ alert('Fill in the custom subject and body first.'); return; }
+  } else {
+    const tpl = emailTemplates.find(t => t.id === selectedId);
+    if(!tpl) return;
+    subject = tpl.subject.replace(/\{\{business\}\}/g, lead.name);
+    body = tpl.body.replace(/\{\{business\}\}/g, lead.name);
+  }
+
+  const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(lead.email) +
+    '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  window.open(gmailUrl, '_blank');
+
+  await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email_sent: true, email_sent_at: new Date().toISOString() })
+  });
+  lead.email_sent = true;
+  lead.email_sent_at = new Date().toISOString();
+
+  const paceSeconds = parseInt(document.getElementById('email-pace-seconds').value, 10) || 0;
+  emailCooldownUntil = Date.now() + (paceSeconds * 1000);
+
+  renderEmailList();
+  updateSentTodayCount();
+}
+
+async function renderEmailView(){
+  await loadEmailTemplates();
+  renderTemplateList();
+  await mgLoadLeads();
+  renderEmailList();
+  updateSentTodayCount();
+}
 
 function wireBoardDragDrop(boardSelector, corporateOnly){
   document.querySelectorAll(boardSelector + ' .cards').forEach(col => {
