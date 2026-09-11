@@ -577,6 +577,7 @@
           </div>
 
           <div class="call-section-label">Eligible leads · <span id="email-list-count">0</span></div>
+          <input type="text" id="email-search" placeholder="Search by business name — e.g. barbers" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:12px; box-sizing:border-box;">
           <div id="email-list" style="max-height:55vh; overflow-y:auto;"></div>
         </div>
       </div>
@@ -1485,8 +1486,13 @@ document.getElementById('email-selected-template').addEventListener('change', (e
 });
 
 function eligibleEmailLeads(){
-  return mgLeads.filter(l => l.email && l.email.trim() && l.status !== 'rejected' && !l.email_sent);
+  const base = mgLeads.filter(l => l.email && l.email.trim() && l.status !== 'rejected' && !l.email_sent);
+  const term = (document.getElementById('email-search')?.value || '').trim().toLowerCase();
+  if(!term) return base;
+  return base.filter(l => l.name.toLowerCase().includes(term));
 }
+
+document.getElementById('email-search').addEventListener('input', renderEmailList);
 
 function updateSentTodayCount(){
   const today = new Date().toDateString();
@@ -1500,7 +1506,8 @@ function renderEmailList(){
   const listEl = document.getElementById('email-list');
   listEl.innerHTML = '';
   if(!items.length){
-    listEl.innerHTML = '<div class="mg-list-empty">Nothing left to email</div>';
+    const hasSearch = (document.getElementById('email-search')?.value || '').trim();
+    listEl.innerHTML = '<div class="mg-list-empty">' + (hasSearch ? 'No matches for "' + escapeHtml(hasSearch) + '"' : 'Nothing left to email') + '</div>';
     return;
   }
   const toRender = items.length > MG_LIST_RENDER_CAP ? items.slice(0, MG_LIST_RENDER_CAP) : items;
