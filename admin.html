@@ -826,6 +826,28 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="email-bin-modal-backdrop">
+  <div class="modal" style="max-width:400px;">
+    <h2>Bin <span id="email-bin-name" style="color:var(--blood);"></span></h2>
+    <p style="color:var(--bone-dim); font-size:13px; margin-top:-6px;">What's the reason? Gets logged before it's removed.</p>
+    <div class="call-card-actions" style="margin-top:14px;">
+      <button data-reason="Dead / Closed Down">Dead / Closed Down</button>
+      <button data-reason="Wrong Email">Wrong Email</button>
+      <button data-reason="Not Interested">Not Interested</button>
+      <button data-reason="Duplicate">Duplicate</button>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <input type="text" id="email-bin-custom-reason" placeholder="Other reason...">
+      <button class="btn danger" id="email-bin-custom-confirm" style="white-space:nowrap;">Bin</button>
+    </div>
+    <div class="modal-actions">
+      <div style="margin-left:auto;">
+        <button class="btn ghost" id="email-bin-cancel-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="focus-modal-backdrop">
   <div class="modal" style="max-width:640px;">
     <div style="display:flex; align-items:center; justify-content:space-between;">
@@ -1556,8 +1578,12 @@ function renderEmailList(){
     row.innerHTML =
       '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
       '<div class="mg-list-meta">' + escapeHtml(lead.email) + (lead.town ? ' · ' + escapeHtml(lead.town) : '') + '</div></div>' +
-      '<button class="compose-btn" data-compose-id="' + lead.id + '">Compose</button>';
+      '<div style="display:flex; gap:8px;">' +
+        '<button class="compose-btn" data-compose-id="' + lead.id + '">Compose</button>' +
+        '<button class="btn danger" style="padding:8px 14px; font-size:10px;" data-bin-email-id="' + lead.id + '">Bin</button>' +
+      '</div>';
     row.querySelector('[data-compose-id]').addEventListener('click', (e) => { e.stopPropagation(); composeEmail(lead); });
+    row.querySelector('[data-bin-email-id]').addEventListener('click', (e) => { e.stopPropagation(); openEmailBinReason(lead); });
     listEl.appendChild(row);
   });
   applyCooldownToButtons();
@@ -1603,6 +1629,45 @@ async function composeEmail(lead){
   renderEmailList();
   updateSentTodayCount();
 }
+
+let emailBinTarget = null;
+
+function openEmailBinReason(lead){
+  emailBinTarget = lead;
+  document.getElementById('email-bin-name').textContent = lead.name;
+  document.getElementById('email-bin-custom-reason').value = '';
+  document.getElementById('email-bin-modal-backdrop').classList.add('open');
+}
+
+async function binEmailLead(reason){
+  if(!emailBinTarget || !reason) return;
+  const lead = emailBinTarget;
+  await mgFetch('/leads/' + lead.id + '/activity', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ note: 'Binned from Email list — ' + reason })
+  });
+  await mgFetch('/leads/' + lead.id, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ status: 'rejected' })
+  });
+  lead.status = 'rejected';
+  document.getElementById('email-bin-modal-backdrop').classList.remove('open');
+  emailBinTarget = null;
+  renderEmailList();
+}
+
+document.querySelectorAll('#email-bin-modal-backdrop [data-reason]').forEach(btn => {
+  btn.addEventListener('click', () => binEmailLead(btn.dataset.reason));
+});
+document.getElementById('email-bin-custom-confirm').addEventListener('click', () => {
+  const custom = document.getElementById('email-bin-custom-reason').value.trim();
+  if(!custom) return;
+  binEmailLead(custom);
+});
+document.getElementById('email-bin-cancel-btn').addEventListener('click', () => {
+  document.getElementById('email-bin-modal-backdrop').classList.remove('open');
+  emailBinTarget = null;
+});
 
 async function renderEmailView(){
   await loadEmailTemplates();
