@@ -576,8 +576,11 @@
             <textarea id="email-custom-body" rows="4" placeholder="Body" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;"></textarea>
           </div>
 
-          <div class="call-section-label">Eligible leads · <span id="email-list-count">0</span></div>
-          <input type="text" id="email-search" placeholder="Search by business name — e.g. barbers" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:12px; box-sizing:border-box;">
+          <div class="call-section-label" style="display:flex; align-items:center; justify-content:space-between;">
+            <span>Eligible leads · <span id="email-list-count">0</span></span>
+            <button class="btn ghost" id="email-search-toggle" style="padding:4px 10px; font-size:10px;">Search</button>
+          </div>
+          <input type="text" id="email-search" placeholder="Search by business name — e.g. barbers" style="display:none; width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin:8px 0 12px; box-sizing:border-box;">
           <div id="email-list" style="max-height:55vh; overflow-y:auto;"></div>
         </div>
       </div>
@@ -1487,12 +1490,30 @@ document.getElementById('email-selected-template').addEventListener('change', (e
 
 function eligibleEmailLeads(){
   const base = mgLeads.filter(l => l.email && l.email.trim() && l.status !== 'rejected' && !l.email_sent);
-  const term = (document.getElementById('email-search')?.value || '').trim().toLowerCase();
+  const searchInput = document.getElementById('email-search');
+  const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
   if(!term) return base;
   return base.filter(l => l.name.toLowerCase().includes(term));
 }
 
-document.getElementById('email-search').addEventListener('input', renderEmailList);
+const emailSearchInput = document.getElementById('email-search');
+const emailSearchToggleBtn = document.getElementById('email-search-toggle');
+if(emailSearchInput && emailSearchToggleBtn){
+  emailSearchInput.addEventListener('input', renderEmailList);
+  emailSearchToggleBtn.addEventListener('click', () => {
+    const isHidden = emailSearchInput.style.display === 'none';
+    if(isHidden){
+      emailSearchInput.style.display = 'block';
+      emailSearchInput.focus();
+      emailSearchToggleBtn.textContent = 'Close';
+    } else {
+      emailSearchInput.style.display = 'none';
+      emailSearchInput.value = '';
+      emailSearchToggleBtn.textContent = 'Search';
+      renderEmailList();
+    }
+  });
+}
 
 function updateSentTodayCount(){
   const today = new Date().toDateString();
