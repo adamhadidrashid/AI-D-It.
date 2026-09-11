@@ -969,7 +969,7 @@ document.getElementById('wipe-btn').addEventListener('click', async () => {
 
   try {
     await sbClient.from('leads').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await fetch(MG_WORKER_URL + '/wipe', { method: 'POST' });
+    await mgFetch('/wipe', { method: 'POST' });
     await loadLeads();
     render();
     renderCorporate();
@@ -1027,7 +1027,7 @@ function applyMachineUI(on){
 
 async function mgSyncMachineFromServer(){
   try{
-    const res = await fetch(MG_WORKER_URL + '/machine');
+    const res = await mgFetch('/machine');
     if(!res.ok) return;
     const data = await res.json();
     applyMachineUI(!!data.machine_on);
@@ -1037,7 +1037,7 @@ async function mgSyncMachineFromServer(){
 async function mgSetMachine(on){
   applyMachineUI(on); // reflect the click immediately
   try{
-    await fetch(MG_WORKER_URL + '/machine', {
+    await mgFetch('/machine', {
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ on })
     });
   }catch(err){
@@ -1099,6 +1099,21 @@ function escapeHtml(str){
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;
+}
+
+// Only ever hand back a genuine http/https URL, or empty string if the
+// stored "website" value is malformed or attempting something like
+// javascript: — this data can come from third-party scraped sources.
+function safeWebsiteUrl(raw){
+  if(!raw) return '';
+  const withScheme = (raw.startsWith('http://') || raw.startsWith('https://')) ? raw : 'https://' + raw;
+  try{
+    const parsed = new URL(withScheme);
+    if(parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.href;
+  }catch(e){
+    return '';
+  }
 }
 
 const RENDER_CAP = 200;
@@ -1306,7 +1321,8 @@ function renderCallProfile(){
   void pane.offsetWidth;
   pane.classList.add('entering');
 
-  const websiteLink = lead.website ? '<a href="' + (lead.website.startsWith('http') ? lead.website : 'https://' + lead.website) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(lead.website) + '</a>' : '';
+  const safeUrl = safeWebsiteUrl(lead.website);
+  const websiteLink = safeUrl ? '<a href="' + escapeHtml(safeUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(lead.website) + '</a>' : '';
   pane.innerHTML =
     '<div class="profile-name">' + escapeHtml(lead.biz) + '</div>' +
     '<div class="profile-meta">' + [escapeHtml(lead.contact || ''), escapeHtml(lead.phone || ''), websiteLink].filter(Boolean).join(' &middot; ') + '</div>' +
@@ -1528,7 +1544,7 @@ async function composeEmail(lead){
     '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
   window.open(gmailUrl, '_blank');
 
-  await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
+  await mgFetch('/leads/' + lead.id, {
     method:'PATCH', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ email_sent: true, email_sent_at: new Date().toISOString() })
   });
@@ -1729,8 +1745,9 @@ function openModal(id){
     document.getElementById('f-website').value = lead.website || '';
     document.getElementById('f-source').value = lead.source || 'Cold approach';
     document.getElementById('f-notes').value = lead.notes || '';
-    if(lead.website){
-      websiteGoBtn.href = lead.website.startsWith('http') ? lead.website : 'https://' + lead.website;
+    const safeGoUrl = safeWebsiteUrl(lead.website);
+    if(safeGoUrl){
+      websiteGoBtn.href = safeGoUrl;
       websiteGoBtn.style.display = 'inline-block';
     } else {
       websiteGoBtn.style.display = 'none';
@@ -1857,6 +1874,15 @@ document.getElementById('delete-lead-btn').addEventListener('click', async () =>
 // ---- Mini GALAXY (Cloudflare Worker-backed, separate from leads) ----
 // ==================================================================
 const MG_WORKER_URL = 'https://aiditworker.themarketinginninbox.workers.dev';
+// Every request to the Worker carries this shared key — the Worker checks
+// it on every endpoint (including /wipe and /send-email) and rejects
+// anything without it, so the URL alone isn't enough to touch real data.
+const AIDIT_WORKER_KEY = 'awEZf4cP9sACDKQIyxUSivsfys6_SlyTuENIw82OURU';
+function mgFetch(pathAndQuery, options = {}){
+  const headers = { ...(options.headers || {}), 'X-AIDIT-KEY': AIDIT_WORKER_KEY };
+  return fetch(MG_WORKER_URL + pathAndQuery, { ...options, headers });
+}
+
 
 // Same logic as the Worker's version — strip country-code/trunk-prefix
 // noise until we hit the real mobile-indicating 7.
@@ -1878,7 +1904,7 @@ let mgEditingId = null;
 
 async function mgLoadLeads(){
   try{
-    const res = await fetch(MG_WORKER_URL + '/leads');
+    const res = await mgFetch('/leads');
     if(!res.ok) return;
     const data = await res.json();
     mgLeads = Array.isArray(data) ? data : [];
@@ -1989,7 +2015,7 @@ document.getElementById('mg-draft-copy-btn').addEventListener('click', async () 
   try{
     await navigator.clipboard.writeText(text);
     if(mgDraftingLeadId){
-      await fetch(MG_WORKER_URL + '/leads/' + mgDraftingLeadId, {
+      await mgFetch('/leads/' + mgDraftingLeadId, {
         method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ draft_created: true })
       });
       await mgLoadLeads();
@@ -2075,7 +2101,7 @@ document.getElementById('mg-push-confirm-btn').addEventListener('click', async (
       const mainLeadId = found ? found.id : null;
       if(mainLeadId){
         try{
-          const actRes = await fetch(MG_WORKER_URL + '/leads/' + lead.id + '/activity');
+          const actRes = await mgFetch('/leads/' + lead.id + '/activity');
           const activity = actRes.ok ? await actRes.json() : [];
           for(const entry of activity){
             await sbClient.from('lead_activity').insert({ lead_id: mainLeadId, note: '[Mini GALAXY] ' + entry.note });
@@ -2083,7 +2109,7 @@ document.getElementById('mg-push-confirm-btn').addEventListener('click', async (
         }catch(actErr){ console.error('Activity carry-over failed for', lead.name, actErr); }
       }
 
-      await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
+      await mgFetch('/leads/' + lead.id, {
         method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pushed_to_main: true })
       });
       succeeded++;
@@ -2145,7 +2171,7 @@ async function mgSendPendingToCorporate(lead){
       is_corporate: true
     }, { onConflict: 'biz,source', ignoreDuplicates: true });
 
-    await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
+    await mgFetch('/leads/' + lead.id, {
       method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' })
     });
     await mgLoadLeads();
@@ -2156,7 +2182,7 @@ async function mgSendPendingToCorporate(lead){
 
 async function mgBinPending(lead){
   try{
-    await fetch(MG_WORKER_URL + '/leads/' + lead.id, {
+    await mgFetch('/leads/' + lead.id, {
       method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' })
     });
     await mgLoadLeads();
@@ -2271,7 +2297,7 @@ async function mgLoadActivity(leadId){
   const listEl = document.getElementById('mg-activity-list');
   listEl.innerHTML = 'Loading...';
   try{
-    const res = await fetch(MG_WORKER_URL + '/leads/' + leadId + '/activity');
+    const res = await mgFetch('/leads/' + leadId + '/activity');
     const entries = res.ok ? await res.json() : [];
     if(!entries.length){
       listEl.innerHTML = '<div style="opacity:0.6;">No activity logged yet</div>';
@@ -2292,7 +2318,7 @@ document.getElementById('mg-activity-add').addEventListener('click', async () =>
   const note = input.value.trim();
   if(!note || !mgEditingId) return;
   try{
-    await fetch(MG_WORKER_URL + '/leads/' + mgEditingId + '/activity', {
+    await mgFetch('/leads/' + mgEditingId + '/activity', {
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ note })
     });
     input.value = '';
@@ -2333,11 +2359,11 @@ document.getElementById('mg-save-btn').addEventListener('click', async () => {
   };
   try{
     if(mgEditingId){
-      await fetch(MG_WORKER_URL + '/leads/' + mgEditingId, {
+      await mgFetch('/leads/' + mgEditingId, {
         method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)
       });
     } else {
-      await fetch(MG_WORKER_URL + '/leads', {
+      await mgFetch('/leads', {
         method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...data, status:'queued' })
       });
     }
@@ -2354,7 +2380,7 @@ document.getElementById('mg-save-btn').addEventListener('click', async () => {
 document.getElementById('mg-delete-btn').addEventListener('click', async () => {
   if(!mgEditingId) return;
   try{
-    await fetch(MG_WORKER_URL + '/leads/' + mgEditingId, {
+    await mgFetch('/leads/' + mgEditingId, {
       method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' })
     });
     await mgLoadLeads();
