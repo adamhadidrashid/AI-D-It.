@@ -1064,9 +1064,12 @@ async function enterDashboard(){
   updateMgPill();
   await mgSyncMachineFromServer();
   setInterval(mgSyncMachineFromServer, 20000);
+  restoreActiveTab();
 }
 
 // ---- Tab switching ----
+const LS_ACTIVE_TAB = 'aidit_active_tab';
+
 document.querySelectorAll('.tab-link[data-tab]').forEach(link => {
   link.addEventListener('click', () => {
     document.querySelectorAll('.tab-link[data-tab]').forEach(l => l.classList.remove('active'));
@@ -1076,8 +1079,23 @@ document.querySelectorAll('.tab-link[data-tab]').forEach(link => {
     document.getElementById('mg-living-sphere-wrap').style.display = (link.dataset.tab === 'leads') ? 'flex' : 'none';
     if(link.dataset.tab === 'notinterested') renderNotInterested();
     if(link.dataset.tab === 'email') renderEmailView();
+    localStorage.setItem(LS_ACTIVE_TAB, link.dataset.tab);
   });
 });
+
+function restoreActiveTab(){
+  const saved = localStorage.getItem(LS_ACTIVE_TAB);
+  if(!saved || saved === 'leads') return; // Leads is already the default active view
+  const link = document.querySelector('.tab-link[data-tab="' + saved + '"]');
+  if(!link) return;
+  if(saved !== 'minigalaxy'){
+    // These live nested under Mini GALAXY's collapsible section — expand
+    // it too, so the sidebar actually shows which one is highlighted.
+    document.getElementById('mg-sub-tabs').classList.add('expanded');
+    document.getElementById('mg-expand-arrow').innerHTML = '&#9662;';
+  }
+  link.click();
+}
 document.getElementById('mg-parent-tab').addEventListener('click', () => {
   const subTabs = document.getElementById('mg-sub-tabs');
   const arrow = document.getElementById('mg-expand-arrow');
