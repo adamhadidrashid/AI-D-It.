@@ -549,6 +549,9 @@
         <div style="display:flex; align-items:center; gap:16px;">
           <div style="font-size:12px; color:var(--bone-dim);">Sent today: <span id="email-sent-today" style="color:#ff7a45;">0</span></div>
           <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:11px; color:var(--bone-dim); display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="email-pace-enabled" checked style="cursor:pointer;">Pacing
+            </label>
             <label style="font-size:11px; color:var(--bone-dim);">Seconds between sends</label>
             <input type="number" id="email-pace-seconds" value="60" min="0" style="width:60px; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:6px 8px; font-family:'IBM Plex Mono', monospace; font-size:12px;">
           </div>
@@ -568,12 +571,24 @@
         </div>
 
         <div>
-          <div class="call-section-label" style="display:flex; align-items:center; justify-content:space-between;">
-            <span>Eligible leads · <span id="email-list-count">0</span></span>
-            <button class="btn ghost" id="email-search-toggle" style="padding:4px 10px; font-size:10px;">Search</button>
+          <div style="display:flex; gap:16px; margin-bottom:14px;">
+            <button class="tab-link sub-tab active" id="email-view-eligible-btn" style="padding:8px 4px; border-left:none;"><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Eligible</button>
+            <button class="tab-link sub-tab" id="email-view-sent-btn" style="padding:8px 4px; border-left:none;"><span class="tab-dot" style="background:#3ed9c9; box-shadow:0 0 6px #3ed9c9;"></span>Sent</button>
           </div>
-          <input type="text" id="email-search" placeholder="Search by business name — e.g. barbers" style="display:none; width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin:8px 0 12px; box-sizing:border-box;">
-          <div id="email-list" style="max-height:55vh; overflow-y:auto;"></div>
+
+          <div id="email-eligible-panel">
+            <div class="call-section-label" style="display:flex; align-items:center; justify-content:space-between;">
+              <span>Eligible leads · <span id="email-list-count">0</span></span>
+              <button class="btn ghost" id="email-search-toggle" style="padding:4px 10px; font-size:10px;">Search</button>
+            </div>
+            <input type="text" id="email-search" placeholder="Search by business name — e.g. barbers" style="display:none; width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin:8px 0 12px; box-sizing:border-box;">
+            <div id="email-list" style="max-height:55vh; overflow-y:auto;"></div>
+          </div>
+
+          <div id="email-sent-panel" class="hidden">
+            <div class="call-section-label">Sent · <span id="email-sent-list-count">0</span></div>
+            <div id="email-sent-list" style="max-height:55vh; overflow-y:auto; margin-top:8px;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1705,12 +1720,17 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
     composeTarget.email_sent = true;
     composeTarget.email_sent_at = new Date().toISOString();
 
-    const paceSeconds = parseInt(document.getElementById('email-pace-seconds').value, 10) || 0;
-    emailCooldownUntil = Date.now() + (paceSeconds * 1000);
+    const pacingOn = document.getElementById('email-pace-enabled').checked;
+    if(pacingOn){
+      const paceSeconds = parseInt(document.getElementById('email-pace-seconds').value, 10) || 0;
+      emailCooldownUntil = Date.now() + (paceSeconds * 1000);
+      applyCooldownToButtons();
+    }
 
     document.getElementById('email-compose-backdrop').classList.remove('open');
     composeTarget = null;
     renderEmailList();
+    renderSentEmailList();
     updateSentTodayCount();
   }catch(err){
     statusEl.textContent = 'Failed to send: ' + err.message;
@@ -1762,8 +1782,45 @@ async function renderEmailView(){
   renderTemplateList();
   await mgLoadLeads();
   renderEmailList();
+  renderSentEmailList();
   updateSentTodayCount();
 }
+
+function renderSentEmailList(){
+  const items = mgLeads.filter(l => l.email_sent).sort((a, b) => new Date(b.email_sent_at || 0) - new Date(a.email_sent_at || 0));
+  document.getElementById('email-sent-list-count').textContent = items.length;
+  const listEl = document.getElementById('email-sent-list');
+  listEl.innerHTML = '';
+  if(!items.length){
+    listEl.innerHTML = '<div class="mg-list-empty">Nothing sent yet</div>';
+    return;
+  }
+  const toRender = items.length > MG_LIST_RENDER_CAP ? items.slice(0, MG_LIST_RENDER_CAP) : items;
+  toRender.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'mg-list-row';
+    const when = lead.email_sent_at ? new Date(lead.email_sent_at).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+    row.innerHTML =
+      '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
+      '<div class="mg-list-meta">' + escapeHtml(lead.email) + (lead.town ? ' · ' + escapeHtml(lead.town) : '') + '</div></div>' +
+      '<div class="mg-list-meta" style="color:#3ed9c9;">' + escapeHtml(when) + '</div>';
+    listEl.appendChild(row);
+  });
+}
+
+document.getElementById('email-view-eligible-btn').addEventListener('click', () => {
+  document.getElementById('email-view-eligible-btn').classList.add('active');
+  document.getElementById('email-view-sent-btn').classList.remove('active');
+  document.getElementById('email-eligible-panel').classList.remove('hidden');
+  document.getElementById('email-sent-panel').classList.add('hidden');
+});
+document.getElementById('email-view-sent-btn').addEventListener('click', () => {
+  document.getElementById('email-view-sent-btn').classList.add('active');
+  document.getElementById('email-view-eligible-btn').classList.remove('active');
+  document.getElementById('email-sent-panel').classList.remove('hidden');
+  document.getElementById('email-eligible-panel').classList.add('hidden');
+  renderSentEmailList();
+});
 
 function wireBoardDragDrop(boardSelector, corporateOnly){
   document.querySelectorAll(boardSelector + ' .cards').forEach(col => {
