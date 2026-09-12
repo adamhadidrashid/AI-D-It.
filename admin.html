@@ -568,16 +568,6 @@
         </div>
 
         <div>
-          <div class="call-section-label">Selected template</div>
-          <select id="email-selected-template" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:18px;">
-            <option value="custom">Custom message (write per email)</option>
-          </select>
-
-          <div id="email-custom-fields" style="display:none; margin-bottom:18px;">
-            <input type="text" id="email-custom-subject" placeholder="Subject" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin-bottom:8px; box-sizing:border-box;">
-            <textarea id="email-custom-body" rows="4" placeholder="Body" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;"></textarea>
-          </div>
-
           <div class="call-section-label" style="display:flex; align-items:center; justify-content:space-between;">
             <span>Eligible leads · <span id="email-list-count">0</span></span>
             <button class="btn ghost" id="email-search-toggle" style="padding:4px 10px; font-size:10px;">Search</button>
@@ -845,6 +835,36 @@
     <div class="modal-actions">
       <div style="margin-left:auto;">
         <button class="btn ghost" id="email-bin-cancel-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="email-compose-backdrop">
+  <div class="modal" style="max-width:560px;">
+    <h2>Compose for <span id="compose-lead-name" style="color:#ff7a45;"></span></h2>
+    <p style="color:var(--bone-dim); font-size:12px; margin-top:-6px;" id="compose-lead-email"></p>
+
+    <div class="field">
+      <label>Template</label>
+      <select id="compose-template-select" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px;">
+        <option value="custom">Blank / write from scratch</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Subject</label>
+      <input type="text" id="compose-subject" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;">
+    </div>
+    <div class="field">
+      <label>Body</label>
+      <textarea id="compose-body" rows="10" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;"></textarea>
+    </div>
+    <div id="compose-status" style="font-size:12px; color:var(--bone-dim); min-height:16px;"></div>
+
+    <div class="modal-actions">
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="btn ghost" id="compose-cancel-btn">Cancel</button>
+        <button class="btn" id="compose-send-btn" style="border-color:#ff7a45; color:#ff7a45;">Send</button>
       </div>
     </div>
   </div>
@@ -1478,6 +1498,8 @@ async function loadEmailTemplates(){
   }catch(err){ console.error('Failed to load templates:', err); emailTemplates = []; }
 }
 
+let editingTemplateId = null;
+
 function renderTemplateList(){
   const listEl = document.getElementById('email-template-list');
   listEl.innerHTML = '';
@@ -1485,32 +1507,42 @@ function renderTemplateList(){
     const row = document.createElement('div');
     row.className = 'tpl-item';
     row.innerHTML = '<span>' + escapeHtml(t.name) + '</span>';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit';
+    editBtn.style.color = '#3ed9c9';
+    editBtn.style.marginRight = '10px';
+    editBtn.addEventListener('click', () => {
+      editingTemplateId = t.id;
+      document.getElementById('tpl-name').value = t.name;
+      document.getElementById('tpl-subject').value = t.subject;
+      document.getElementById('tpl-body').value = t.body;
+      document.getElementById('tpl-save-btn').textContent = 'Update Template';
+    });
     const delBtn = document.createElement('button');
     delBtn.textContent = 'Delete';
     delBtn.addEventListener('click', async () => {
       await sbClient.from('mg_email_templates').delete().eq('id', t.id);
       await loadEmailTemplates();
       renderTemplateList();
-      populateTemplateDropdown();
+      populateComposeTemplateDropdown();
     });
-    row.appendChild(delBtn);
+    row.append(editBtn, delBtn);
     listEl.appendChild(row);
   });
 
-  populateTemplateDropdown();
+  populateComposeTemplateDropdown();
 }
 
-function populateTemplateDropdown(){
-  const select = document.getElementById('email-selected-template');
-  const current = select.value;
-  select.innerHTML = '<option value="custom">Custom message (write per email)</option>';
+function populateComposeTemplateDropdown(){
+  const select = document.getElementById('compose-template-select');
+  if(!select) return;
+  select.innerHTML = '<option value="custom">Blank / write from scratch</option>';
   emailTemplates.forEach(t => {
     const opt = document.createElement('option');
     opt.value = t.id;
     opt.textContent = t.name;
     select.appendChild(opt);
   });
-  if([...select.options].some(o => o.value === current)) select.value = current;
 }
 
 document.getElementById('tpl-save-btn').addEventListener('click', async () => {
@@ -1518,16 +1550,18 @@ document.getElementById('tpl-save-btn').addEventListener('click', async () => {
   const subject = document.getElementById('tpl-subject').value.trim();
   const body = document.getElementById('tpl-body').value.trim();
   if(!name || !subject || !body) return;
-  await sbClient.from('mg_email_templates').insert({ name, subject, body });
+  if(editingTemplateId){
+    await sbClient.from('mg_email_templates').update({ name, subject, body }).eq('id', editingTemplateId);
+    editingTemplateId = null;
+    document.getElementById('tpl-save-btn').textContent = 'Save Template';
+  } else {
+    await sbClient.from('mg_email_templates').insert({ name, subject, body });
+  }
   document.getElementById('tpl-name').value = '';
   document.getElementById('tpl-subject').value = '';
   document.getElementById('tpl-body').value = '';
   await loadEmailTemplates();
   renderTemplateList();
-});
-
-document.getElementById('email-selected-template').addEventListener('change', (e) => {
-  document.getElementById('email-custom-fields').style.display = e.target.value === 'custom' ? 'block' : 'none';
 });
 
 function eligibleEmailLeads(){
@@ -1586,7 +1620,7 @@ function renderEmailList(){
         (safeUrl ? '<a href="' + escapeHtml(safeUrl) + '" target="_blank" rel="noopener noreferrer" class="visit-btn">Visit</a>' : '') +
         '<button class="btn danger" style="padding:8px 14px; font-size:10px;" data-bin-email-id="' + lead.id + '">Bin</button>' +
       '</div>';
-    row.querySelector('[data-compose-id]').addEventListener('click', (e) => { e.stopPropagation(); composeEmail(lead); });
+    row.querySelector('[data-compose-id]').addEventListener('click', (e) => { e.stopPropagation(); openComposeModal(lead); });
     if(safeUrl) row.querySelector('.visit-btn').addEventListener('click', (e) => e.stopPropagation());
     row.querySelector('[data-bin-email-id]').addEventListener('click', (e) => { e.stopPropagation(); openEmailBinReason(lead); });
     listEl.appendChild(row);
@@ -1603,37 +1637,86 @@ function applyCooldownToButtons(){
   if(remaining > 0) setTimeout(applyCooldownToButtons, 500);
 }
 
-async function composeEmail(lead){
-  const selectedId = document.getElementById('email-selected-template').value;
-  let subject, body;
-  if(selectedId === 'custom'){
-    subject = document.getElementById('email-custom-subject').value.trim();
-    body = document.getElementById('email-custom-body').value.trim();
-    if(!subject || !body){ alert('Fill in the custom subject and body first.'); return; }
+let composeTarget = null;
+
+function openComposeModal(lead){
+  composeTarget = lead;
+  document.getElementById('compose-lead-name').textContent = lead.name;
+  document.getElementById('compose-lead-email').textContent = lead.email;
+  document.getElementById('compose-status').textContent = '';
+  populateComposeTemplateDropdown();
+
+  const select = document.getElementById('compose-template-select');
+  if(emailTemplates.length){
+    select.value = emailTemplates[0].id;
+    applyTemplateToCompose(emailTemplates[0], lead);
   } else {
-    const tpl = emailTemplates.find(t => t.id === selectedId);
-    if(!tpl) return;
-    subject = tpl.subject.replace(/\{\{business\}\}/g, lead.name);
-    body = tpl.body.replace(/\{\{business\}\}/g, lead.name);
+    select.value = 'custom';
+    document.getElementById('compose-subject').value = '';
+    document.getElementById('compose-body').value = '';
   }
-
-  const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(lead.email) +
-    '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-  window.open(gmailUrl, '_blank');
-
-  await mgFetch('/leads/' + lead.id, {
-    method:'PATCH', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ email_sent: true, email_sent_at: new Date().toISOString() })
-  });
-  lead.email_sent = true;
-  lead.email_sent_at = new Date().toISOString();
-
-  const paceSeconds = parseInt(document.getElementById('email-pace-seconds').value, 10) || 0;
-  emailCooldownUntil = Date.now() + (paceSeconds * 1000);
-
-  renderEmailList();
-  updateSentTodayCount();
+  document.getElementById('email-compose-backdrop').classList.add('open');
 }
+
+function applyTemplateToCompose(tpl, lead){
+  document.getElementById('compose-subject').value = tpl.subject.replace(/\{\{business\}\}/g, lead.name);
+  document.getElementById('compose-body').value = tpl.body.replace(/\{\{business\}\}/g, lead.name);
+}
+
+document.getElementById('compose-template-select').addEventListener('change', (e) => {
+  if(!composeTarget) return;
+  if(e.target.value === 'custom'){
+    document.getElementById('compose-subject').value = '';
+    document.getElementById('compose-body').value = '';
+    return;
+  }
+  const tpl = emailTemplates.find(t => t.id === e.target.value);
+  if(tpl) applyTemplateToCompose(tpl, composeTarget);
+});
+
+document.getElementById('compose-cancel-btn').addEventListener('click', () => {
+  document.getElementById('email-compose-backdrop').classList.remove('open');
+  composeTarget = null;
+});
+
+document.getElementById('compose-send-btn').addEventListener('click', async () => {
+  if(!composeTarget) return;
+  const subject = document.getElementById('compose-subject').value.trim();
+  const body = document.getElementById('compose-body').value.trim();
+  const statusEl = document.getElementById('compose-status');
+  if(!subject || !body){ statusEl.textContent = 'Fill in both subject and body first.'; return; }
+
+  const sendBtn = document.getElementById('compose-send-btn');
+  sendBtn.disabled = true;
+  statusEl.textContent = 'Sending...';
+
+  try{
+    const res = await mgFetch('/send-email', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ to: composeTarget.email, subject, body })
+    });
+    const data = await res.json();
+    if(!res.ok || data.error) throw new Error(data.error || 'Send failed');
+
+    await mgFetch('/leads/' + composeTarget.id, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email_sent: true, email_sent_at: new Date().toISOString() })
+    });
+    composeTarget.email_sent = true;
+    composeTarget.email_sent_at = new Date().toISOString();
+
+    const paceSeconds = parseInt(document.getElementById('email-pace-seconds').value, 10) || 0;
+    emailCooldownUntil = Date.now() + (paceSeconds * 1000);
+
+    document.getElementById('email-compose-backdrop').classList.remove('open');
+    composeTarget = null;
+    renderEmailList();
+    updateSentTodayCount();
+  }catch(err){
+    statusEl.textContent = 'Failed to send: ' + err.message;
+  }
+  sendBtn.disabled = false;
+});
 
 let emailBinTarget = null;
 
