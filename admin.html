@@ -574,6 +574,7 @@
           <div style="display:flex; gap:16px; margin-bottom:14px;">
             <button class="tab-link sub-tab active" id="email-view-eligible-btn" style="padding:8px 4px; border-left:none; background:transparent; border-top:none; border-right:none; border-bottom:none;"><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Pending</button>
             <button class="tab-link sub-tab" id="email-view-sent-btn" style="padding:8px 4px; border-left:none; background:transparent; border-top:none; border-right:none; border-bottom:none;"><span class="tab-dot" style="background:#3ed9c9; box-shadow:0 0 6px #3ed9c9;"></span>Sent</button>
+            <button class="tab-link sub-tab" id="email-view-rejected-btn" style="padding:8px 4px; border-left:none; background:transparent; border-top:none; border-right:none; border-bottom:none;"><span class="tab-dot" style="background:var(--blood); box-shadow:0 0 6px var(--blood);"></span>Rejected</button>
           </div>
 
           <div id="email-eligible-panel">
@@ -588,6 +589,12 @@
           <div id="email-sent-panel" class="hidden">
             <div class="call-section-label">Sent · <span id="email-sent-list-count">0</span></div>
             <div id="email-sent-list" style="max-height:55vh; overflow-y:auto; margin-top:8px;"></div>
+          </div>
+
+          <div id="email-rejected-panel" class="hidden">
+            <div class="call-section-label">Rejected · <span id="email-rejected-list-count">0</span></div>
+            <p style="color:var(--bone-dim); font-size:12px; margin:4px 0 10px;">Didn't work out by email — click one to see why, and try the phone instead.</p>
+            <div id="email-rejected-list" style="max-height:55vh; overflow-y:auto;"></div>
           </div>
         </div>
       </div>
@@ -1796,6 +1803,7 @@ async function renderEmailView(){
   await mgLoadLeads();
   renderEmailList();
   renderSentEmailList();
+  renderRejectedEmailList();
   updateSentTodayCount();
 }
 
@@ -1827,19 +1835,39 @@ function renderSentEmailList(){
   });
 }
 
-document.getElementById('email-view-eligible-btn').addEventListener('click', () => {
-  document.getElementById('email-view-eligible-btn').classList.add('active');
-  document.getElementById('email-view-sent-btn').classList.remove('active');
-  document.getElementById('email-eligible-panel').classList.remove('hidden');
-  document.getElementById('email-sent-panel').classList.add('hidden');
-});
-document.getElementById('email-view-sent-btn').addEventListener('click', () => {
-  document.getElementById('email-view-sent-btn').classList.add('active');
-  document.getElementById('email-view-eligible-btn').classList.remove('active');
-  document.getElementById('email-sent-panel').classList.remove('hidden');
-  document.getElementById('email-eligible-panel').classList.add('hidden');
-  renderSentEmailList();
-});
+const EMAIL_SUBVIEWS = ['eligible', 'sent', 'rejected'];
+function switchEmailSubview(active){
+  EMAIL_SUBVIEWS.forEach(name => {
+    document.getElementById('email-view-' + name + '-btn').classList.toggle('active', name === active);
+    document.getElementById('email-' + name + '-panel').classList.toggle('hidden', name !== active);
+  });
+  if(active === 'sent') renderSentEmailList();
+  if(active === 'rejected') renderRejectedEmailList();
+}
+document.getElementById('email-view-eligible-btn').addEventListener('click', () => switchEmailSubview('eligible'));
+document.getElementById('email-view-sent-btn').addEventListener('click', () => switchEmailSubview('sent'));
+document.getElementById('email-view-rejected-btn').addEventListener('click', () => switchEmailSubview('rejected'));
+
+function renderRejectedEmailList(){
+  const items = mgLeads.filter(l => l.status === 'rejected');
+  document.getElementById('email-rejected-list-count').textContent = items.length;
+  const listEl = document.getElementById('email-rejected-list');
+  listEl.innerHTML = '';
+  if(!items.length){
+    listEl.innerHTML = '<div class="mg-list-empty">Nothing here</div>';
+    return;
+  }
+  const toRender = items.length > MG_LIST_RENDER_CAP ? items.slice(0, MG_LIST_RENDER_CAP) : items;
+  toRender.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'mg-list-row';
+    row.innerHTML =
+      '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
+      '<div class="mg-list-meta">' + [lead.email, lead.phone, lead.town].filter(Boolean).map(escapeHtml).join(' · ') + '</div></div>';
+    row.addEventListener('click', () => mgOpenModal(lead.id));
+    listEl.appendChild(row);
+  });
+}
 
 function wireBoardDragDrop(boardSelector, corporateOnly){
   document.querySelectorAll(boardSelector + ' .cards').forEach(col => {
