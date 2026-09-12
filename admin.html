@@ -1713,12 +1713,13 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
     const data = await res.json();
     if(!res.ok || data.error) throw new Error(data.error || 'Send failed');
 
-    await mgFetch('/leads/' + composeTarget.id, {
+    const markSentRes = await mgFetch('/leads/' + composeTarget.id, {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ email_sent: true, email_sent_at: new Date().toISOString() })
     });
-    composeTarget.email_sent = true;
-    composeTarget.email_sent_at = new Date().toISOString();
+    if(!markSentRes.ok){
+      statusEl.textContent = 'Email sent, but failed to mark it as done — refresh to check.';
+    }
 
     await mgFetch('/leads/' + composeTarget.id + '/activity', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -1734,6 +1735,7 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
 
     document.getElementById('email-compose-backdrop').classList.remove('open');
     composeTarget = null;
+    await mgLoadLeads();
     renderEmailList();
     renderSentEmailList();
     updateSentTodayCount();
@@ -1782,7 +1784,13 @@ document.getElementById('email-bin-cancel-btn').addEventListener('click', () => 
   emailBinTarget = null;
 });
 
+const LS_PACING_ENABLED = 'aidit_pacing_enabled';
+
 async function renderEmailView(){
+  const savedPacing = localStorage.getItem(LS_PACING_ENABLED);
+  if(savedPacing !== null){
+    document.getElementById('email-pace-enabled').checked = savedPacing === 'true';
+  }
   await loadEmailTemplates();
   renderTemplateList();
   await mgLoadLeads();
@@ -1790,6 +1798,11 @@ async function renderEmailView(){
   renderSentEmailList();
   updateSentTodayCount();
 }
+
+document.getElementById('email-pace-enabled').addEventListener('change', (e) => {
+  localStorage.setItem(LS_PACING_ENABLED, e.target.checked);
+});
+
 
 function renderSentEmailList(){
   const items = mgLeads.filter(l => l.email_sent).sort((a, b) => new Date(b.email_sent_at || 0) - new Date(a.email_sent_at || 0));
