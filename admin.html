@@ -186,6 +186,8 @@
   .tpl-item span{ cursor:default; }
   .tpl-item button{ background:transparent; border:none; color:var(--blood); cursor:pointer; font-size:11px; font-family:'IBM Plex Mono', monospace; }
   .compose-btn{ background:transparent; border:1px solid #ff7a45; color:#ff7a45; padding:8px 16px; font-size:11px; border-radius:3px; font-family:'IBM Plex Mono', monospace; cursor:pointer; white-space:nowrap; }
+  .visit-btn{ background:transparent; border:1px solid #3ed9c9; color:#3ed9c9; padding:8px 14px; font-size:10px; border-radius:3px; font-family:'IBM Plex Mono', monospace; cursor:pointer; white-space:nowrap; text-decoration:none; display:inline-flex; align-items:center; }
+  .visit-btn:hover{ background:rgba(62,217,201,0.08); }
   .compose-btn:disabled{ border-color:var(--hair); color:var(--steel); cursor:not-allowed; }
   .outcome-toast.show{ opacity:1; transform:translateY(0); }
 
@@ -1575,14 +1577,17 @@ function renderEmailList(){
   toRender.forEach(lead => {
     const row = document.createElement('div');
     row.className = 'mg-list-row';
+    const safeUrl = safeWebsiteUrl(lead.website);
     row.innerHTML =
       '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
       '<div class="mg-list-meta">' + escapeHtml(lead.email) + (lead.town ? ' · ' + escapeHtml(lead.town) : '') + '</div></div>' +
       '<div style="display:flex; gap:8px;">' +
         '<button class="compose-btn" data-compose-id="' + lead.id + '">Compose</button>' +
+        (safeUrl ? '<a href="' + escapeHtml(safeUrl) + '" target="_blank" rel="noopener noreferrer" class="visit-btn">Visit</a>' : '') +
         '<button class="btn danger" style="padding:8px 14px; font-size:10px;" data-bin-email-id="' + lead.id + '">Bin</button>' +
       '</div>';
     row.querySelector('[data-compose-id]').addEventListener('click', (e) => { e.stopPropagation(); composeEmail(lead); });
+    if(safeUrl) row.querySelector('.visit-btn').addEventListener('click', (e) => e.stopPropagation());
     row.querySelector('[data-bin-email-id]').addEventListener('click', (e) => { e.stopPropagation(); openEmailBinReason(lead); });
     listEl.appendChild(row);
   });
