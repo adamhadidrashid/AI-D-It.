@@ -572,13 +572,13 @@
 
         <div>
           <div style="display:flex; gap:16px; margin-bottom:14px;">
-            <button class="tab-link sub-tab active" id="email-view-eligible-btn" style="padding:8px 4px; border-left:none;"><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Eligible</button>
-            <button class="tab-link sub-tab" id="email-view-sent-btn" style="padding:8px 4px; border-left:none;"><span class="tab-dot" style="background:#3ed9c9; box-shadow:0 0 6px #3ed9c9;"></span>Sent</button>
+            <button class="tab-link sub-tab active" id="email-view-eligible-btn" style="padding:8px 4px; border-left:none; background:transparent; border-top:none; border-right:none; border-bottom:none;"><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Pending</button>
+            <button class="tab-link sub-tab" id="email-view-sent-btn" style="padding:8px 4px; border-left:none; background:transparent; border-top:none; border-right:none; border-bottom:none;"><span class="tab-dot" style="background:#3ed9c9; box-shadow:0 0 6px #3ed9c9;"></span>Sent</button>
           </div>
 
           <div id="email-eligible-panel">
             <div class="call-section-label" style="display:flex; align-items:center; justify-content:space-between;">
-              <span>Eligible leads · <span id="email-list-count">0</span></span>
+              <span>Pending · <span id="email-list-count">0</span></span>
               <button class="btn ghost" id="email-search-toggle" style="padding:4px 10px; font-size:10px;">Search</button>
             </div>
             <input type="text" id="email-search" placeholder="Search by business name — e.g. barbers" style="display:none; width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin:8px 0 12px; box-sizing:border-box;">
@@ -1720,6 +1720,11 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
     composeTarget.email_sent = true;
     composeTarget.email_sent_at = new Date().toISOString();
 
+    await mgFetch('/leads/' + composeTarget.id + '/activity', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ note: 'EMAIL SENT\nSubject: ' + subject + '\n\n' + body })
+    });
+
     const pacingOn = document.getElementById('email-pace-enabled').checked;
     if(pacingOn){
       const paceSeconds = parseInt(document.getElementById('email-pace-seconds').value, 10) || 0;
@@ -1804,6 +1809,7 @@ function renderSentEmailList(){
       '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
       '<div class="mg-list-meta">' + escapeHtml(lead.email) + (lead.town ? ' · ' + escapeHtml(lead.town) : '') + '</div></div>' +
       '<div class="mg-list-meta" style="color:#3ed9c9;">' + escapeHtml(when) + '</div>';
+    row.addEventListener('click', () => mgOpenModal(lead.id));
     listEl.appendChild(row);
   });
 }
