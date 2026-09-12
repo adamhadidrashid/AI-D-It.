@@ -580,7 +580,10 @@
           <div id="email-eligible-panel">
             <div class="call-section-label" style="display:flex; align-items:center; justify-content:space-between;">
               <span>Pending · <span id="email-list-count">0</span></span>
-              <button class="btn ghost" id="email-search-toggle" style="padding:4px 10px; font-size:10px;">Search</button>
+              <div style="display:flex; gap:8px;">
+                <button class="btn ghost" id="email-autosend-btn" style="padding:4px 10px; font-size:10px; border-color:#ff7a45; color:#ff7a45;">Auto-Send Filtered List</button>
+                <button class="btn ghost" id="email-search-toggle" style="padding:4px 10px; font-size:10px;">Search</button>
+              </div>
             </div>
             <input type="text" id="email-search" placeholder="Search by business name — e.g. barbers" style="display:none; width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px; margin:8px 0 12px; box-sizing:border-box;">
             <div id="email-list" style="max-height:55vh; overflow-y:auto;"></div>
@@ -887,6 +890,44 @@
       <div style="display:flex; gap:10px; margin-left:auto;">
         <button class="btn ghost" id="compose-cancel-btn">Cancel</button>
         <button class="btn" id="compose-send-btn" style="border-color:#ff7a45; color:#ff7a45;">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="autosend-modal-backdrop">
+  <div class="modal" style="max-width:460px;">
+    <h2>Auto-Send</h2>
+    <p style="color:var(--bone-dim); font-size:13px; margin-top:-6px;" id="autosend-scope-text"></p>
+
+    <div id="autosend-setup">
+      <div class="field">
+        <label>Template</label>
+        <select id="autosend-template-select" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px;"></select>
+      </div>
+      <div class="field">
+        <label>Seconds between sends</label>
+        <input type="number" id="autosend-pace-seconds" value="90" min="30" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;">
+      </div>
+      <p style="color:var(--bone-dim); font-size:11px;">Runs in this browser tab — keep it open until it finishes. Closing it pauses the batch exactly where it stopped.</p>
+      <div class="modal-actions">
+        <div style="display:flex; gap:10px; margin-left:auto;">
+          <button class="btn ghost" id="autosend-cancel-setup-btn">Cancel</button>
+          <button class="btn" id="autosend-start-btn" style="border-color:#ff7a45; color:#ff7a45;">Start Auto-Send</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="autosend-progress" class="hidden">
+      <div style="text-align:center; padding:20px 0;">
+        <div style="font-family:'Big Shoulders Display', sans-serif; font-size:32px; font-weight:700; color:#ff7a45;" id="autosend-progress-count">0 / 0</div>
+        <div style="color:var(--bone-dim); font-size:12px; margin-top:6px;" id="autosend-progress-status">Sending...</div>
+        <div style="color:var(--bone-dim); font-size:11px; margin-top:10px;" id="autosend-progress-next"></div>
+      </div>
+      <div class="modal-actions">
+        <div style="margin-left:auto;">
+          <button class="btn danger" id="autosend-stop-btn">Cancel Batch</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1806,6 +1847,123 @@ async function renderEmailView(){
   renderRejectedEmailList();
   updateSentTodayCount();
 }
+
+// ---- Auto-Send batch ----
+let autoSendCancelled = false;
+let autoSendRunning = false;
+
+function cancellableSleep(ms){
+  return new Promise(resolve => {
+    const start = Date.now();
+    const check = () => {
+      if(autoSendCancelled || Date.now() - start >= ms) return resolve();
+      setTimeout(check, 250);
+    };
+    check();
+  });
+}
+
+document.getElementById('email-autosend-btn').addEventListener('click', () => {
+  const items = eligibleEmailLeads();
+  if(!items.length){ alert('Nothing on screen right now to send to.'); return; }
+  const term = document.getElementById('email-search').value.trim();
+  document.getElementById('autosend-scope-text').textContent =
+    items.length + ' lead' + (items.length === 1 ? '' : 's') + (term ? ' matching "' + term + '"' : ' currently shown') + '.';
+
+  const select = document.getElementById('autosend-template-select');
+  select.innerHTML = '';
+  if(!emailTemplates.length){
+    select.innerHTML = '<option value="">No templates saved yet</option>';
+  } else {
+    emailTemplates.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      select.appendChild(opt);
+    });
+  }
+
+  document.getElementById('autosend-setup').classList.remove('hidden');
+  document.getElementById('autosend-progress').classList.add('hidden');
+  document.getElementById('autosend-modal-backdrop').classList.add('open');
+});
+
+document.getElementById('autosend-cancel-setup-btn').addEventListener('click', () => {
+  document.getElementById('autosend-modal-backdrop').classList.remove('open');
+});
+
+document.getElementById('autosend-stop-btn').addEventListener('click', () => {
+  if(autoSendRunning){
+    autoSendCancelled = true;
+    document.getElementById('autosend-progress-status').textContent = 'Stopping after this one...';
+  } else {
+    document.getElementById('autosend-modal-backdrop').classList.remove('open');
+    document.getElementById('autosend-stop-btn').textContent = 'Cancel Batch';
+  }
+});
+
+document.getElementById('autosend-start-btn').addEventListener('click', async () => {
+  const tplId = document.getElementById('autosend-template-select').value;
+  const tpl = emailTemplates.find(t => t.id === tplId);
+  if(!tpl){ alert('Pick a template first.'); return; }
+  const paceSeconds = Math.max(30, parseInt(document.getElementById('autosend-pace-seconds').value, 10) || 90);
+
+  const batch = eligibleEmailLeads().slice();
+  autoSendCancelled = false;
+  autoSendRunning = true;
+
+  document.getElementById('autosend-setup').classList.add('hidden');
+  document.getElementById('autosend-progress').classList.remove('hidden');
+
+  let sent = 0;
+  for(let i = 0; i < batch.length; i++){
+    if(autoSendCancelled) break;
+    const lead = batch[i];
+    document.getElementById('autosend-progress-count').textContent = (i + 1) + ' / ' + batch.length;
+    document.getElementById('autosend-progress-status').textContent = 'Sending to ' + lead.name + '...';
+    document.getElementById('autosend-progress-next').textContent = '';
+
+    const subject = tpl.subject.replace(/\{\{business\}\}/g, lead.name);
+    const body = tpl.body.replace(/\{\{business\}\}/g, lead.name);
+
+    try{
+      const res = await mgFetch('/send-email', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ to: lead.email, subject, body })
+      });
+      const data = await res.json();
+      if(res.ok && !data.error){
+        await mgFetch('/leads/' + lead.id, {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email_sent: true, email_sent_at: new Date().toISOString() })
+        });
+        await mgFetch('/leads/' + lead.id + '/activity', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ note: 'EMAIL SENT (auto-send)\nSubject: ' + subject + '\n\n' + body })
+        });
+        sent++;
+      }
+    }catch(err){ console.error('Auto-send failed for', lead.name, err); }
+
+    if(i < batch.length - 1 && !autoSendCancelled){
+      document.getElementById('autosend-progress-status').textContent = 'Waiting before the next one...';
+      document.getElementById('autosend-progress-next').textContent = 'Next: ' + batch[i + 1].name;
+      await cancellableSleep(paceSeconds * 1000);
+    }
+  }
+
+  autoSendRunning = false;
+  document.getElementById('autosend-progress-status').textContent = autoSendCancelled
+    ? 'Stopped — ' + sent + ' sent before cancelling.'
+    : 'Done — ' + sent + ' sent.';
+  document.getElementById('autosend-progress-next').textContent = '';
+  document.getElementById('autosend-stop-btn').textContent = 'Close';
+
+  await mgLoadLeads();
+  renderEmailList();
+  renderSentEmailList();
+  updateSentTodayCount();
+});
 
 document.getElementById('email-pace-enabled').addEventListener('change', (e) => {
   localStorage.setItem(LS_PACING_ENABLED, e.target.checked);
