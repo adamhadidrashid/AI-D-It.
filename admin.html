@@ -1754,7 +1754,7 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
   statusEl.textContent = 'Sending...';
 
   try{
-    const res = await mgFetch('/send-email', {
+    const res = await mgFetchWithTimeout('/send-email', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ to: composeTarget.email, subject, body })
     });
@@ -1916,6 +1916,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   document.getElementById('autosend-progress').classList.remove('hidden');
 
   let sent = 0;
+  let skipped = 0;
   for(let i = 0; i < batch.length; i++){
     if(autoSendCancelled) break;
     const lead = batch[i];
@@ -1927,7 +1928,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
     const body = tpl.body.replace(/\{\{business\}\}/g, lead.name);
 
     try{
-      const res = await mgFetch('/send-email', {
+      const res = await mgFetchWithTimeout('/send-email', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ to: lead.email, subject, body })
       });
@@ -1942,8 +1943,13 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
           body: JSON.stringify({ note: 'EMAIL SENT (auto-send)\nSubject: ' + subject + '\n\n' + body })
         });
         sent++;
+      }else if(!res.ok || data.error){
+        skipped++;
       }
-    }catch(err){ console.error('Auto-send failed for', lead.name, err); }
+    }catch(err){
+      console.error('Auto-send failed for', lead.name, err);
+      skipped++;
+    }
 
     if(i < batch.length - 1 && !autoSendCancelled){
       document.getElementById('autosend-progress-status').textContent = 'Waiting before the next one...';
@@ -1953,9 +1959,10 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   }
 
   autoSendRunning = false;
+  const skippedNote = skipped ? ', ' + skipped + ' skipped (timed out or failed)' : '';
   document.getElementById('autosend-progress-status').textContent = autoSendCancelled
-    ? 'Stopped — ' + sent + ' sent before cancelling.'
-    : 'Done — ' + sent + ' sent.';
+    ? 'Stopped — ' + sent + ' sent before cancelling' + skippedNote + '.'
+    : 'Done — ' + sent + ' sent' + skippedNote + '.';
   document.getElementById('autosend-progress-next').textContent = '';
   document.getElementById('autosend-stop-btn').textContent = 'Close';
 
@@ -2342,6 +2349,16 @@ const AIDIT_WORKER_KEY = 'awEZf4cP9sACDKQIyxUSivsfys6_SlyTuENIw82OURU';
 function mgFetch(pathAndQuery, options = {}){
   const headers = { ...(options.headers || {}), 'X-AIDIT-KEY': AIDIT_WORKER_KEY };
   return fetch(MG_WORKER_URL + pathAndQuery, { ...options, headers });
+}
+
+// Sending goes over a raw SMTP connection with no built-in timeout of its
+// own — if a single send ever hangs (a slow response, a network blip),
+// this stops it dragging the whole batch down with it.
+function mgFetchWithTimeout(pathAndQuery, options = {}, timeoutMs = 20000){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return mgFetch(pathAndQuery, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
 }
 
 
