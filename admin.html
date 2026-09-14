@@ -1661,6 +1661,15 @@ document.getElementById('tpl-save-btn').addEventListener('click', async () => {
   renderTemplateList();
 });
 
+// Checks the actual email address, not just this one lead record — a
+// near-duplicate business (two separate rows, same real inbox) could
+// otherwise slip through and get emailed twice.
+function findAlreadySentDuplicate(email, excludeLeadId){
+  const target = (email || '').trim().toLowerCase();
+  if(!target) return null;
+  return mgLeads.find(l => l.id !== excludeLeadId && l.email_sent && (l.email || '').trim().toLowerCase() === target) || null;
+}
+
 function eligibleEmailLeads(){
   const base = mgLeads.filter(l => l.email && l.email.trim() && l.status !== 'rejected' && !l.email_sent);
   const searchInput = document.getElementById('email-search');
@@ -1782,6 +1791,24 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
   const body = document.getElementById('compose-body').value.trim();
   const statusEl = document.getElementById('compose-status');
   if(!subject || !body){ statusEl.textContent = 'Fill in both subject and body first.'; return; }
+
+  const dupe = findAlreadySentDuplicate(composeTarget.email, composeTarget.id);
+  if(dupe){
+    statusEl.textContent = 'Already sent to this address via "' + dupe.name + '" — skipping.';
+    await mgFetch('/leads/' + composeTarget.id + '/activity', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ note: 'Skipped — duplicate email, already sent via "' + dupe.name + '"' })
+    });
+    await mgFetch('/leads/' + composeTarget.id, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ status: 'rejected' })
+    });
+    await mgLoadLeads();
+    renderEmailList();
+    renderRejectedEmailList();
+    setTimeout(() => { document.getElementById('email-compose-backdrop').classList.remove('open'); composeTarget = null; }, 1800);
+    return;
+  }
 
   const sendBtn = document.getElementById('compose-send-btn');
   sendBtn.disabled = true;
@@ -1985,10 +2012,32 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
 
   let sent = 0;
   let skipped = 0;
+  let duplicates = 0;
   for(let i = 0; i < batch.length; i++){
     if(autoSendCancelled) break;
     const lead = batch[i];
     updateAutoSendUI((i + 1) + ' / ' + batch.length, 'Sending to ' + lead.name + '...', '');
+
+    const dupe = findAlreadySentDuplicate(lead.email, lead.id);
+    if(dupe){
+      duplicates++;
+      try{
+        await mgFetch('/leads/' + lead.id + '/activity', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ note: 'Skipped (auto-send) — duplicate email, already sent via "' + dupe.name + '"' })
+        });
+        await mgFetch('/leads/' + lead.id, {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ status: 'rejected' })
+        });
+      }catch(e2){ console.error('Failed to record duplicate-email skip:', e2); }
+
+      if(i < batch.length - 1 && !autoSendCancelled){
+        updateAutoSendUI(null, 'Waiting before the next one...', 'Next: ' + batch[i + 1].name);
+        await cancellableSleep(paceSeconds * 1000);
+      }
+      continue;
+    }
 
     const subject = tpl.subject.replace(/\{\{business\}\}/g, lead.name);
     const body = tpl.body.replace(/\{\{business\}\}/g, lead.name);
@@ -2037,9 +2086,10 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
 
   autoSendRunning = false;
   const skippedNote = skipped ? ', ' + skipped + ' skipped (timed out or failed)' : '';
+  const dupeNote = duplicates ? ', ' + duplicates + ' skipped (duplicate email)' : '';
   const finalMsg = autoSendCancelled
-    ? 'Stopped — ' + sent + ' sent before cancelling' + skippedNote + '.'
-    : 'Done — ' + sent + ' sent' + skippedNote + '.';
+    ? 'Stopped — ' + sent + ' sent before cancelling' + skippedNote + dupeNote + '.'
+    : 'Done — ' + sent + ' sent' + skippedNote + dupeNote + '.';
   updateAutoSendUI(null, finalMsg, '');
   document.getElementById('autosend-stop-btn').textContent = 'Close';
 
