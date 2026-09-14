@@ -935,6 +935,10 @@
         <label>Seconds between sends</label>
         <input type="number" id="autosend-pace-seconds" value="90" min="30" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;">
       </div>
+      <div class="field">
+        <label>How many to send (leave blank for all)</label>
+        <input type="number" id="autosend-limit" min="1" placeholder="e.g. 150" style="width:100%; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:10px; font-family:'IBM Plex Mono', monospace; font-size:12px; box-sizing:border-box;">
+      </div>
       <p style="color:var(--bone-dim); font-size:11px;">Runs in this browser tab — keep it open until it finishes. Closing it pauses the batch exactly where it stopped.</p>
       <div class="modal-actions">
         <div style="display:flex; gap:10px; margin-left:auto;">
@@ -1955,6 +1959,11 @@ document.getElementById('email-autosend-btn').addEventListener('click', () => {
     });
   }
 
+  const limitInput = document.getElementById('autosend-limit');
+  limitInput.value = '';
+  limitInput.max = items.length;
+  limitInput.placeholder = 'all ' + items.length;
+
   document.getElementById('autosend-setup').classList.remove('hidden');
   document.getElementById('autosend-progress').classList.add('hidden');
   document.getElementById('autosend-modal-backdrop').classList.add('open');
@@ -2003,7 +2012,9 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   if(!tpl){ alert('Pick a template first.'); return; }
   const paceSeconds = Math.max(30, parseInt(document.getElementById('autosend-pace-seconds').value, 10) || 90);
 
-  const batch = eligibleEmailLeads().slice();
+  const limitVal = parseInt(document.getElementById('autosend-limit').value, 10);
+  const fullBatch = eligibleEmailLeads();
+  const batch = (limitVal && limitVal > 0) ? fullBatch.slice(0, limitVal) : fullBatch.slice();
   autoSendCancelled = false;
   autoSendRunning = true;
 
