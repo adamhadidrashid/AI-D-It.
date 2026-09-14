@@ -545,7 +545,7 @@
 
     <div class="view hidden" id="view-email">
       <div class="view-head">
-        <h2><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Email</h2>
+        <h2 id="email-stats-trigger" style="cursor:pointer;" title="Click for email stats"><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Email</h2>
         <div style="display:flex; align-items:center; gap:16px;">
           <div style="font-size:12px; color:var(--bone-dim);">Sent today: <span id="email-sent-today" style="color:#ff7a45;">0</span></div>
           <div style="display:flex; align-items:center; gap:8px;">
@@ -838,6 +838,32 @@
     <div class="modal-actions">
       <div style="margin-left:auto;">
         <button class="btn ghost" id="call-stats-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="email-stats-modal-backdrop">
+  <div class="modal" style="max-width:420px;">
+    <h2>Email Stats</h2>
+    <div style="display:flex; gap:12px; margin-top:16px;">
+      <div style="flex:1; text-align:center; border:1px solid var(--hair); padding:18px 8px;">
+        <div id="stat-email-sent" style="font-family:'Big Shoulders Display', sans-serif; font-size:30px; font-weight:700; color:#3ed9c9;">0</div>
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); margin-top:4px;">Sent</div>
+      </div>
+      <div style="flex:1; text-align:center; border:1px solid var(--hair); padding:18px 8px;">
+        <div id="stat-email-failed" style="font-family:'Big Shoulders Display', sans-serif; font-size:30px; font-weight:700; color:var(--blood);">0</div>
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); margin-top:4px;">Failed to Send</div>
+      </div>
+      <div style="flex:1; text-align:center; border:1px solid var(--hair); padding:18px 8px;">
+        <div id="stat-email-delivered" style="font-family:'Big Shoulders Display', sans-serif; font-size:30px; font-weight:700; color:#ff7a45;">0</div>
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); margin-top:4px;">Delivered*</div>
+      </div>
+    </div>
+    <p style="color:var(--bone-dim); font-size:11px; margin-top:12px;">*Handed off successfully for sending — not yet checked against real bounces reported after the fact.</p>
+    <div class="modal-actions">
+      <div style="margin-left:auto;">
+        <button class="btn ghost" id="email-stats-close-btn">Close</button>
       </div>
     </div>
   </div>
@@ -1789,6 +1815,13 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
     updateSentTodayCount();
   }catch(err){
     statusEl.textContent = 'Failed to send: ' + err.message;
+    try{
+      await mgFetch('/leads/' + composeTarget.id, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email_send_failed: true, email_failed_at: new Date().toISOString() })
+      });
+      await mgLoadLeads();
+    }catch(e2){ console.error('Failed to record the send failure itself:', e2); }
   }
   sendBtn.disabled = false;
 });
@@ -1945,10 +1978,22 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
         sent++;
       }else if(!res.ok || data.error){
         skipped++;
+        try{
+          await mgFetch('/leads/' + lead.id, {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ email_send_failed: true, email_failed_at: new Date().toISOString() })
+          });
+        }catch(e2){ console.error('Failed to record the auto-send failure itself:', e2); }
       }
     }catch(err){
       console.error('Auto-send failed for', lead.name, err);
       skipped++;
+      try{
+        await mgFetch('/leads/' + lead.id, {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email_send_failed: true, email_failed_at: new Date().toISOString() })
+        });
+      }catch(e2){ console.error('Failed to record the auto-send failure itself:', e2); }
     }
 
     if(i < batch.length - 1 && !autoSendCancelled){
@@ -2442,6 +2487,22 @@ document.getElementById('call-stats-close-btn').addEventListener('click', () => 
 });
 document.getElementById('call-stats-modal-backdrop').addEventListener('click', e => {
   if(e.target.id === 'call-stats-modal-backdrop') document.getElementById('call-stats-modal-backdrop').classList.remove('open');
+});
+
+function openEmailStatsModal(){
+  const sent = mgLeads.filter(l => l.email_sent).length;
+  const failed = mgLeads.filter(l => l.email_send_failed).length;
+  document.getElementById('stat-email-sent').textContent = sent;
+  document.getElementById('stat-email-failed').textContent = failed;
+  document.getElementById('stat-email-delivered').textContent = Math.max(0, sent - failed);
+  document.getElementById('email-stats-modal-backdrop').classList.add('open');
+}
+document.getElementById('email-stats-trigger').addEventListener('click', openEmailStatsModal);
+document.getElementById('email-stats-close-btn').addEventListener('click', () => {
+  document.getElementById('email-stats-modal-backdrop').classList.remove('open');
+});
+document.getElementById('email-stats-modal-backdrop').addEventListener('click', e => {
+  if(e.target.id === 'email-stats-modal-backdrop') document.getElementById('email-stats-modal-backdrop').classList.remove('open');
 });
 
 // ---- Dispatch: email draft template ----
