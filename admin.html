@@ -952,6 +952,7 @@
       <div style="text-align:center; padding:20px 0;">
         <div style="font-family:'Big Shoulders Display', sans-serif; font-size:32px; font-weight:700; color:#ff7a45;" id="autosend-progress-count">0 / 0</div>
         <div style="color:var(--bone-dim); font-size:12px; margin-top:6px;" id="autosend-progress-status">Sending...</div>
+        <div style="color:#3ed9c9; font-size:12px; margin-top:6px;" id="autosend-progress-eta"></div>
         <div style="color:var(--bone-dim); font-size:11px; margin-top:10px;" id="autosend-progress-next"></div>
       </div>
       <div class="modal-actions">
@@ -969,6 +970,7 @@
     Auto-Send <span id="autosend-floating-count">0 / 0</span>
   </div>
   <div style="color:var(--bone-dim); font-size:11px; margin-top:4px;" id="autosend-floating-status">Sending...</div>
+  <div style="color:#3ed9c9; font-size:11px; margin-top:2px;" id="autosend-floating-eta"></div>
 </div>
 
 <div class="modal-backdrop" id="focus-modal-backdrop">
@@ -1992,7 +1994,16 @@ document.getElementById('autosend-floating').addEventListener('click', () => {
   document.getElementById('autosend-modal-backdrop').classList.add('open');
 });
 
-function updateAutoSendUI(count, status, next){
+function formatEta(remainingItems, paceSeconds){
+  if(remainingItems <= 0) return '';
+  const remainingMs = remainingItems * paceSeconds * 1000;
+  const mins = Math.round(remainingMs / 60000);
+  const durationText = mins < 1 ? 'under a minute' : mins + ' min';
+  const finishClock = new Date(Date.now() + remainingMs).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  return '~' + durationText + ' left · finishing ~' + finishClock;
+}
+
+function updateAutoSendUI(count, status, next, eta){
   if(count !== null){
     document.getElementById('autosend-progress-count').textContent = count;
     document.getElementById('autosend-floating-count').textContent = count;
@@ -2003,6 +2014,10 @@ function updateAutoSendUI(count, status, next){
   }
   if(next !== null){
     document.getElementById('autosend-progress-next').textContent = next;
+  }
+  if(eta !== undefined && eta !== null){
+    document.getElementById('autosend-progress-eta').textContent = eta;
+    document.getElementById('autosend-floating-eta').textContent = eta;
   }
 }
 
@@ -2027,7 +2042,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   for(let i = 0; i < batch.length; i++){
     if(autoSendCancelled) break;
     const lead = batch[i];
-    updateAutoSendUI((i + 1) + ' / ' + batch.length, 'Sending to ' + lead.name + '...', '');
+    updateAutoSendUI((i + 1) + ' / ' + batch.length, 'Sending to ' + lead.name + '...', '', formatEta(batch.length - (i + 1), paceSeconds));
 
     const dupe = findAlreadySentDuplicate(lead.email, lead.id);
     if(dupe){
@@ -2044,7 +2059,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
       }catch(e2){ console.error('Failed to record duplicate-email skip:', e2); }
 
       if(i < batch.length - 1 && !autoSendCancelled){
-        updateAutoSendUI(null, 'Waiting before the next one...', 'Next: ' + batch[i + 1].name);
+        updateAutoSendUI(null, 'Waiting before the next one...', 'Next: ' + batch[i + 1].name, formatEta(batch.length - (i + 1), paceSeconds));
         await cancellableSleep(paceSeconds * 1000);
       }
       continue;
@@ -2090,7 +2105,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
     }
 
     if(i < batch.length - 1 && !autoSendCancelled){
-      updateAutoSendUI(null, 'Waiting before the next one...', 'Next: ' + batch[i + 1].name);
+      updateAutoSendUI(null, 'Waiting before the next one...', 'Next: ' + batch[i + 1].name, formatEta(batch.length - (i + 1), paceSeconds));
       await cancellableSleep(paceSeconds * 1000);
     }
   }
@@ -2101,7 +2116,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   const finalMsg = autoSendCancelled
     ? 'Stopped — ' + sent + ' sent before cancelling' + skippedNote + dupeNote + '.'
     : 'Done — ' + sent + ' sent' + skippedNote + dupeNote + '.';
-  updateAutoSendUI(null, finalMsg, '');
+  updateAutoSendUI(null, finalMsg, '', '');
   document.getElementById('autosend-stop-btn').textContent = 'Close';
 
   await mgLoadLeads();
