@@ -1842,14 +1842,18 @@ async function binEmailLead(reason){
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ note: 'Binned from Email list — ' + reason })
   });
-  await mgFetch('/leads/' + lead.id, {
+  const patchRes = await mgFetch('/leads/' + lead.id, {
     method:'PATCH', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ status: 'rejected' })
   });
-  lead.status = 'rejected';
   document.getElementById('email-bin-modal-backdrop').classList.remove('open');
   emailBinTarget = null;
+  if(!patchRes.ok){
+    alert('Logged the reason, but failed to actually remove it — try again.');
+  }
+  await mgLoadLeads();
   renderEmailList();
+  renderRejectedEmailList();
 }
 
 document.querySelectorAll('#email-bin-modal-backdrop [data-reason]').forEach(btn => {
