@@ -1821,7 +1821,7 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
   try{
     const res = await mgFetchWithTimeout('/send-email', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ to: composeTarget.email, subject, body })
+      body: JSON.stringify({ to: composeTarget.email, subject, body, leadId: composeTarget.id })
     });
     const data = await res.json();
     if(!res.ok || data.error) throw new Error(data.error || 'Send failed');
@@ -2056,7 +2056,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
     try{
       const res = await mgFetchWithTimeout('/send-email', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ to: lead.email, subject, body })
+        body: JSON.stringify({ to: lead.email, subject, body, leadId: lead.id })
       });
       const data = await res.json();
       if(res.ok && !data.error){
@@ -2116,7 +2116,10 @@ document.getElementById('email-pace-enabled').addEventListener('change', (e) => 
 
 
 function renderSentEmailList(){
-  const items = mgLeads.filter(l => l.email_sent).sort((a, b) => new Date(b.email_sent_at || 0) - new Date(a.email_sent_at || 0));
+  const items = mgLeads.filter(l => l.email_sent).sort((a, b) => {
+    if(!!b.email_opened !== !!a.email_opened) return (b.email_opened ? 1 : 0) - (a.email_opened ? 1 : 0);
+    return new Date(b.email_sent_at || 0) - new Date(a.email_sent_at || 0);
+  });
   document.getElementById('email-sent-list-count').textContent = items.length;
   const listEl = document.getElementById('email-sent-list');
   listEl.innerHTML = '';
@@ -2129,9 +2132,12 @@ function renderSentEmailList(){
     const row = document.createElement('div');
     row.className = 'mg-list-row';
     const when = lead.email_sent_at ? new Date(lead.email_sent_at).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+    const openedBadge = lead.email_opened
+      ? '<span style="color:#4ee08a; border:1px solid #4ee08a; padding:1px 6px; font-size:9px; margin-right:8px; font-family:\'IBM Plex Mono\', monospace;">OPENED</span>'
+      : '';
     row.innerHTML =
-      '<div><div class="mg-list-name">' + escapeHtml(lead.name) + '</div>' +
-      '<div class="mg-list-meta">' + escapeHtml(lead.email) + (lead.town ? ' · ' + escapeHtml(lead.town) : '') + '</div></div>' +
+      '<div><div class="mg-list-name">' + openedBadge + escapeHtml(lead.name) + '</div>' +
+      '<div class="mg-list-meta">' + escapeHtml(lead.email) + (lead.town ? ' · ' + escapeHtml(lead.town) : '') + (lead.phone ? ' · ' + escapeHtml(lead.phone) : '') + '</div></div>' +
       '<div class="mg-list-meta" style="color:#3ed9c9;">' + escapeHtml(when) + '</div>';
     row.addEventListener('click', () => mgOpenModal(lead.id));
     listEl.appendChild(row);
