@@ -951,12 +951,20 @@
         <div style="color:var(--bone-dim); font-size:11px; margin-top:10px;" id="autosend-progress-next"></div>
       </div>
       <div class="modal-actions">
-        <div style="margin-left:auto;">
+        <div style="display:flex; gap:10px; margin-left:auto;">
+          <button class="btn ghost" id="autosend-minimize-btn">Minimize</button>
           <button class="btn danger" id="autosend-stop-btn">Cancel Batch</button>
         </div>
       </div>
     </div>
   </div>
+</div>
+
+<div id="autosend-floating" class="hidden" style="position:fixed; bottom:24px; right:24px; background:var(--card); border:1px solid #ff7a45; padding:14px 18px; z-index:998; cursor:pointer; min-width:200px;">
+  <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#ff7a45; display:flex; align-items:center; justify-content:space-between;">
+    Auto-Send <span id="autosend-floating-count">0 / 0</span>
+  </div>
+  <div style="color:var(--bone-dim); font-size:11px; margin-top:4px;" id="autosend-floating-status">Sending...</div>
 </div>
 
 <div class="modal-backdrop" id="focus-modal-backdrop">
@@ -1932,12 +1940,35 @@ document.getElementById('autosend-cancel-setup-btn').addEventListener('click', (
 document.getElementById('autosend-stop-btn').addEventListener('click', () => {
   if(autoSendRunning){
     autoSendCancelled = true;
-    document.getElementById('autosend-progress-status').textContent = 'Stopping after this one...';
+    updateAutoSendUI(null, 'Stopping after this one...', '');
   } else {
     document.getElementById('autosend-modal-backdrop').classList.remove('open');
     document.getElementById('autosend-stop-btn').textContent = 'Cancel Batch';
   }
 });
+
+document.getElementById('autosend-minimize-btn').addEventListener('click', () => {
+  document.getElementById('autosend-modal-backdrop').classList.remove('open');
+  document.getElementById('autosend-floating').classList.remove('hidden');
+});
+document.getElementById('autosend-floating').addEventListener('click', () => {
+  document.getElementById('autosend-floating').classList.add('hidden');
+  document.getElementById('autosend-modal-backdrop').classList.add('open');
+});
+
+function updateAutoSendUI(count, status, next){
+  if(count !== null){
+    document.getElementById('autosend-progress-count').textContent = count;
+    document.getElementById('autosend-floating-count').textContent = count;
+  }
+  if(status !== null){
+    document.getElementById('autosend-progress-status').textContent = status;
+    document.getElementById('autosend-floating-status').textContent = status;
+  }
+  if(next !== null){
+    document.getElementById('autosend-progress-next').textContent = next;
+  }
+}
 
 document.getElementById('autosend-start-btn').addEventListener('click', async () => {
   const tplId = document.getElementById('autosend-template-select').value;
@@ -1957,9 +1988,7 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   for(let i = 0; i < batch.length; i++){
     if(autoSendCancelled) break;
     const lead = batch[i];
-    document.getElementById('autosend-progress-count').textContent = (i + 1) + ' / ' + batch.length;
-    document.getElementById('autosend-progress-status').textContent = 'Sending to ' + lead.name + '...';
-    document.getElementById('autosend-progress-next').textContent = '';
+    updateAutoSendUI((i + 1) + ' / ' + batch.length, 'Sending to ' + lead.name + '...', '');
 
     const subject = tpl.subject.replace(/\{\{business\}\}/g, lead.name);
     const body = tpl.body.replace(/\{\{business\}\}/g, lead.name);
@@ -2001,18 +2030,17 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
     }
 
     if(i < batch.length - 1 && !autoSendCancelled){
-      document.getElementById('autosend-progress-status').textContent = 'Waiting before the next one...';
-      document.getElementById('autosend-progress-next').textContent = 'Next: ' + batch[i + 1].name;
+      updateAutoSendUI(null, 'Waiting before the next one...', 'Next: ' + batch[i + 1].name);
       await cancellableSleep(paceSeconds * 1000);
     }
   }
 
   autoSendRunning = false;
   const skippedNote = skipped ? ', ' + skipped + ' skipped (timed out or failed)' : '';
-  document.getElementById('autosend-progress-status').textContent = autoSendCancelled
+  const finalMsg = autoSendCancelled
     ? 'Stopped — ' + sent + ' sent before cancelling' + skippedNote + '.'
     : 'Done — ' + sent + ' sent' + skippedNote + '.';
-  document.getElementById('autosend-progress-next').textContent = '';
+  updateAutoSendUI(null, finalMsg, '');
   document.getElementById('autosend-stop-btn').textContent = 'Close';
 
   await mgLoadLeads();
