@@ -548,6 +548,7 @@
         <h2 id="email-stats-trigger" style="cursor:pointer;" title="Click for email stats"><span class="tab-dot" style="background:#ff7a45; box-shadow:0 0 6px #ff7a45;"></span>Email</h2>
         <div style="display:flex; align-items:center; gap:16px;">
           <div style="font-size:12px; color:var(--bone-dim);">Sent today: <span id="email-sent-today" style="color:#ff7a45;">0</span></div>
+          <button class="btn ghost" id="email-blocklist-btn" style="padding:6px 12px; font-size:10px; border-color:var(--blood); color:var(--blood);">Blocked Emails</button>
           <div style="display:flex; align-items:center; gap:8px;">
             <label style="font-size:11px; color:var(--bone-dim); display:flex; align-items:center; gap:6px; cursor:pointer;">
               <input type="checkbox" id="email-pace-enabled" checked style="cursor:pointer;">Pacing
@@ -864,6 +865,24 @@
     <div class="modal-actions">
       <div style="margin-left:auto;">
         <button class="btn ghost" id="email-stats-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="email-blocklist-backdrop">
+  <div class="modal" style="max-width:460px;">
+    <h2 style="color:var(--blood);">Blocked Emails</h2>
+    <p style="color:var(--bone-dim); font-size:12px; margin-top:-6px;">These addresses will never be sent to, no matter what future batches pull in.</p>
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <input type="text" id="blocklist-add-input" placeholder="email@example.com" style="flex:1; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px;">
+      <input type="text" id="blocklist-add-reason" placeholder="Reason (optional)" style="max-width:150px; background:var(--card); border:1px solid var(--hair); color:var(--bone); padding:9px; font-family:'IBM Plex Mono', monospace; font-size:12px;">
+      <button class="btn danger" id="blocklist-add-btn" style="white-space:nowrap;">Block</button>
+    </div>
+    <div id="blocklist-items" style="margin-top:14px; max-height:300px; overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <div style="margin-left:auto;">
+        <button class="btn ghost" id="email-blocklist-close-btn">Close</button>
       </div>
     </div>
   </div>
@@ -1676,8 +1695,69 @@ function findAlreadySentDuplicate(email, excludeLeadId){
   return mgLeads.find(l => l.id !== excludeLeadId && l.email_sent && (l.email || '').trim().toLowerCase() === target) || null;
 }
 
+// Permanent block list — separate from the normal Bin/reject flow.
+// Anything on here never gets sent to again, regardless of which
+// lead record it shows up on in future batches.
+let blockedEmails = [];
+
+async function loadBlockedEmails(){
+  try{
+    const { data } = await sbClient.from('mg_email_blocklist').select('*').order('blocked_at', { ascending:false });
+    blockedEmails = data || [];
+  }catch(err){ console.error('Failed to load block list:', err); blockedEmails = []; }
+}
+
+function isEmailBlocked(email){
+  const target = (email || '').trim().toLowerCase();
+  if(!target) return false;
+  return blockedEmails.some(b => b.email.trim().toLowerCase() === target);
+}
+
+function renderBlocklist(){
+  const listEl = document.getElementById('blocklist-items');
+  listEl.innerHTML = '';
+  if(!blockedEmails.length){
+    listEl.innerHTML = '<div class="mg-list-empty">Nothing blocked yet</div>';
+    return;
+  }
+  blockedEmails.forEach(b => {
+    const row = document.createElement('div');
+    row.className = 'tpl-item';
+    row.innerHTML = '<span>' + escapeHtml(b.email) + (b.reason ? ' — ' + escapeHtml(b.reason) : '') + '</span>';
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Unblock';
+    removeBtn.addEventListener('click', async () => {
+      await sbClient.from('mg_email_blocklist').delete().eq('email', b.email);
+      await loadBlockedEmails();
+      renderBlocklist();
+    });
+    row.appendChild(removeBtn);
+    listEl.appendChild(row);
+  });
+}
+
+document.getElementById('email-blocklist-btn').addEventListener('click', async () => {
+  await loadBlockedEmails();
+  renderBlocklist();
+  document.getElementById('email-blocklist-backdrop').classList.add('open');
+});
+document.getElementById('email-blocklist-close-btn').addEventListener('click', () => {
+  document.getElementById('email-blocklist-backdrop').classList.remove('open');
+});
+document.getElementById('blocklist-add-btn').addEventListener('click', async () => {
+  const email = document.getElementById('blocklist-add-input').value.trim().toLowerCase();
+  const reason = document.getElementById('blocklist-add-reason').value.trim();
+  if(!email || !email.includes('@')) return;
+  await sbClient.from('mg_email_blocklist').upsert({ email, reason: reason || null });
+  document.getElementById('blocklist-add-input').value = '';
+  document.getElementById('blocklist-add-reason').value = '';
+  await loadBlockedEmails();
+  renderBlocklist();
+  renderEmailList();
+});
+
 function eligibleEmailLeads(){
-  const base = mgLeads.filter(l => l.email && l.email.trim() && l.status !== 'rejected' && !l.email_sent);
+  const base = mgLeads.filter(l => l.email && l.email.trim() && l.status !== 'rejected' && !l.email_sent && !isEmailBlocked(l.email));
   const searchInput = document.getElementById('email-search');
   const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
   if(!term) return base;
@@ -1797,6 +1877,11 @@ document.getElementById('compose-send-btn').addEventListener('click', async () =
   const body = document.getElementById('compose-body').value.trim();
   const statusEl = document.getElementById('compose-status');
   if(!subject || !body){ statusEl.textContent = 'Fill in both subject and body first.'; return; }
+
+  if(isEmailBlocked(composeTarget.email)){
+    statusEl.textContent = 'This address is on the block list — not sending.';
+    return;
+  }
 
   const dupe = findAlreadySentDuplicate(composeTarget.email, composeTarget.id);
   if(dupe){
@@ -1919,6 +2004,7 @@ async function renderEmailView(){
   }
   await loadEmailTemplates();
   renderTemplateList();
+  await loadBlockedEmails();
   await mgLoadLeads();
   renderEmailList();
   renderSentEmailList();
@@ -2039,10 +2125,26 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   let sent = 0;
   let skipped = 0;
   let duplicates = 0;
+  let blocked = 0;
   for(let i = 0; i < batch.length; i++){
     if(autoSendCancelled) break;
     const lead = batch[i];
     updateAutoSendUI((i + 1) + ' / ' + batch.length, 'Sending to ' + lead.name + '...', '', formatEta(batch.length - (i + 1), paceSeconds));
+
+    if(isEmailBlocked(lead.email)){
+      blocked++;
+      try{
+        await mgFetch('/leads/' + lead.id + '/activity', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ note: 'Skipped (auto-send) — email is on the block list' })
+        });
+        await mgFetch('/leads/' + lead.id, {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ status: 'rejected' })
+        });
+      }catch(e2){ console.error('Failed to record blocked-email skip:', e2); }
+      continue;
+    }
 
     const dupe = findAlreadySentDuplicate(lead.email, lead.id);
     if(dupe){
@@ -2113,9 +2215,10 @@ document.getElementById('autosend-start-btn').addEventListener('click', async ()
   autoSendRunning = false;
   const skippedNote = skipped ? ', ' + skipped + ' skipped (timed out or failed)' : '';
   const dupeNote = duplicates ? ', ' + duplicates + ' skipped (duplicate email)' : '';
+  const blockedNote = blocked ? ', ' + blocked + ' skipped (blocked)' : '';
   const finalMsg = autoSendCancelled
-    ? 'Stopped — ' + sent + ' sent before cancelling' + skippedNote + dupeNote + '.'
-    : 'Done — ' + sent + ' sent' + skippedNote + dupeNote + '.';
+    ? 'Stopped — ' + sent + ' sent before cancelling' + skippedNote + dupeNote + blockedNote + '.'
+    : 'Done — ' + sent + ' sent' + skippedNote + dupeNote + blockedNote + '.';
   updateAutoSendUI(null, finalMsg, '', '');
   document.getElementById('autosend-stop-btn').textContent = 'Close';
 
